@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Teleport (Zero-Cloud LAN Teleport) is a desktop app, written in Python 3.12+, for sending very large files and syncing the clipboard between computers on the same LAN. There is no cloud, no accounts and no telemetry. It is built as a release-quality product. Current phase and roadmap: `docs/ke_hoach.md` §5.1. Which modules exist: `docs/architecture.md` §3.
+Teleport (Zero-Cloud LAN Teleport) is a desktop app, written in Python 3.12+, for sending very large files and syncing the clipboard between computers on the same LAN. There is no cloud, no accounts and no telemetry. It is built as a release-quality product. Current phase and roadmap: `docs/ke_hoach.md` §5.1. A feature freeze is in force until the hackathon demo; its rules and scope are in `docs/ke_hoach.md` §5.5 (remove this sentence after the demo). Which modules exist: `docs/architecture.md` §3.
 
-The parent folder of `.claude/` is the git repo root (`git@github.com:Nha-Cong-Dong/zero-cloud-lan-teleport.git`, public). The repo root holds only `README.md`, `LICENSE` and `pyproject.toml`. Every other Markdown doc lives in `docs/`. Keep the root that tidy.
+The parent folder of `.claude/` is the git repo root (`git@github.com:Nha-Cong-Dong/zero-cloud-lan-teleport.git`, public). Besides the hidden `.gitignore` and `.gitattributes`, the repo root holds only `README.md`, `LICENSE` and `pyproject.toml`. Every other Markdown doc lives in `docs/`. Keep the root that tidy.
 
 ## Docs
 
@@ -32,7 +32,7 @@ pytest -m "not integration"                      # skip tests that open real soc
 pytest -m "not slow"                             # fast loop while iterating; still run the full pytest before a PR
 pytest -n 4 --dist loadgroup -m "not gui"       # parallel; gui tests are a separate run: same command with -m gui (CI: -n auto; gui serial on Windows, split into jobs by TELEPORT_SHARD); why: architecture.md §6
 pytest tests/net/test_tls.py::test_verify_fingerprint_accepts_equal   # single test
-ruff check . ; ruff format --check .             # CI runs exactly: ruff check, ruff format --check, mypy src, pytest -n auto --dist loadgroup -m "not gui"; separate jobs run the gui tests (serial and split on Windows)
+ruff check . ; ruff format --check .             # lint + format check; the exact CI steps: CONTRIBUTING.md and .github/workflows/ci.yml
 mypy src                                         # type check; config in [tool.mypy] of pyproject.toml
 teleport identity                                # CLI entry point (also: python -m teleport)
 teleport listen                                  # wait for pairing (shows the 6-digit code, asks [c/k])
@@ -82,7 +82,7 @@ This file is the single source for the subagent team and its pipeline (`ke_hoach
 | `viet-test` | Test writer. Writes tests in `tests/` from the spec, not from the code; never edits `src/` | Yes, `tests/` only |
 | `soat-code` | Reviewer. Reviews the uncommitted diff for correctness, security, layering and docs, with severity levels | No |
 | `tan-cong` | Attack tester. For code that takes input from other machines, writes and runs real attack scripts against a node on 127.0.0.1 and reports only what it reproduced, with measurements | Scripts in the scratchpad only; never `src/` or `tests/` |
-| `do-dac` | Benchmarker. Measures mvp N1–N12 with repeatable scripts and records results in `docs/benchmark.md`; writes "chưa đo", never estimates | `docs/benchmark.md` (plus its one line in the `docs/README.md` map when it creates the file); scripts in the scratchpad |
+| `do-dac` | Benchmarker. Measures mvp N1–N12 with repeatable scripts and records the results, plus the H1–H5 check results (mvp §4.1), in `docs/benchmark.md`; writes "chưa đo", never estimates | `docs/benchmark.md` (plus its one line in the `docs/README.md` map when it creates the file); scripts in the scratchpad |
 | `soat-tai-lieu` | Docs auditor. Audits all docs, `README.md`, this file and `.claude/agents/` for the one-fact-one-place rule, dead references, copied numbers and drift from the code | No |
 | `giao-dien` | UI coder (phase 4+). Writes the PySide6 `ui` layer through `app`, with i18n (F11) and accessibility (N12); uses the user-level `design-taste-frontend` skill only as reference for app screens, never its web scripts or network assets | Yes, `src/teleport/ui/`, `tests/ui/` and the `ui` rows of `docs/architecture.md` |
 | `dong-goi` | Packager (trial builds from phase 2, mainly phase 6). Installers, release workflow, dependency licence audit; never tags, releases or pushes | Packaging files, `.github/workflows/`, and `pyproject.toml` when assigned |
