@@ -250,6 +250,13 @@ async def test_server_issues_no_session_ticket(identity, tmp_path):
             await writer.wait_closed()
 
 
+def test_server_context_accepts_pem_without_trailing_newline(identity, tmp_path):
+    """PEM thiếu ký tự xuống dòng cuối không làm hỏng cả danh sách tin cậy."""
+    certs = [load_or_create_identity(tmp_path / n).cert_pem().rstrip("\n") for n in ("a", "b")]
+    ctx = server_context(identity, certs)
+    assert ctx.cert_store_stats()["x509"] == 2  # chứng chỉ tự ký không phải CA: get_ca_certs() rỗng
+
+
 @pytest.mark.parametrize("allow_anonymous", [True, False])
 def test_server_context_flags(identity, allow_anonymous):
     """A3: server cũng bật NO_CHECK_TIME (kèm STRICT), vẫn TLS 1.3 và không cấp ticket."""

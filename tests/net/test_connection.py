@@ -1897,6 +1897,21 @@ async def test_receive_on_pairing_enforces_16_kib(fast, listener_factory, raw_cl
 
 
 @pytest.mark.integration
+async def test_receive_aborts_after_framing_error(fast, listener_factory, raw_client, ids):
+    """Header vượt trần → kết nối bị đóng, lần sau ConnectionLostError (không đọc thân lệch khung)."""
+    h = await listener_factory(ids.server)
+    peer, server = await raw_pairing(raw_client, h, ids)
+    body = HEADER.pack(5) + b'{"a":'  # thân "trông như" một khung khác nếu đọc tiếp
+    peer.send_bytes(HEADER.pack(MAX_PAIRING_MESSAGE_SIZE + 1) + body)
+    await peer.drain()
+    with pytest.raises(FramingError):
+        await asyncio.wait_for(server.receive(), 2)
+    assert server.closed
+    with pytest.raises(ConnectionLostError):
+        await asyncio.wait_for(server.receive(), 2)
+
+
+@pytest.mark.integration
 async def test_receive_on_control_allows_more_than_16_kib(fast, listener_factory, raw_client, ids):
     """CONTROL đọc với MAX_MESSAGE_SIZE: message 20 KiB (trường lạ) vẫn nhận được."""
     h = await listener_factory(ids.server, trusted=[ids.b])
