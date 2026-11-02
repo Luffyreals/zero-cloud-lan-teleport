@@ -30,6 +30,7 @@ import ntpath
 import os
 import posixpath
 import tempfile
+import time
 import unicodedata
 
 import pytest
@@ -757,6 +758,100 @@ DEDUPE_POOL = st.sampled_from(
 def test_property_dedupe_contract(fn, names):
     out = fn.dedupe_offer_names(names)
     _assert_dedupe_contract(fn, names, out)
+
+
+def _reference_dedupe(fn, names: list[str]) -> list[str]:
+    """Thuật toán khử trùng cũ (trước bản sửa bậc hai), làm tham chiếu.
+
+    `restore` chạy lại `dedupe_offer_names` cho lượt đã lưu, nên bản mới phải cho đúng kết quả
+    này với mọi đầu vào. Bộ đếm nhớ theo khóa của tên gốc, nên số được chọn không phải lúc nào
+    cũng là số nhỏ nhất còn trống (hai tên cùng khóa nhưng dài khác nhau bị cắt khác nhau).
+    """
+    cleaned = [fn.sanitize_filename(name) for name in names]
+    keys = [fn.dedupe_key(name) for name in cleaned]
+    taken = set(keys)
+    seen: set[str] = set()
+    next_number: dict[str, int] = {}
+    result: list[str] = []
+    for name, k in zip(cleaned, keys, strict=True):
+        if k not in seen:
+            seen.add(k)
+            result.append(name)
+            continue
+        n = next_number.get(k, 1)
+        while True:
+            candidate = fn.numbered(name, n)
+            n += 1
+            candidate_key = fn.dedupe_key(candidate)
+            if candidate_key not in taken:
+                break
+        next_number[k] = n
+        taken.add(candidate_key)
+        result.append(candidate)
+    return result
+
+
+def _long_name(prefix: str, tail: str, ext: str) -> str:
+    """Tên đúng 255 byte: `prefix` lặp cho đủ chỗ, rồi `tail` và `ext`."""
+    room = MAX_BYTES - utf8_len(tail) - utf8_len(ext)
+    body = (prefix * room).encode("utf-8")[:room].decode("utf-8", "ignore")
+    body += "a" * (room - utf8_len(body))
+    return body + tail + ext
+
+
+# Tên dài 255 byte khác nhau ở cuối thân (bị cắt khi đánh số), tên trùng hoa thường, tên kiểu
+# `a (1).txt`, tên không đuôi, tên có số nhiều chữ số sẵn.
+REFERENCE_POOL = st.one_of(
+    DEDUPE_POOL,
+    st.builds(
+        _long_name,
+        # `ﬁ`/`FI`, `ẞ`/`ß`/`SS`, `İ`: casefold đổi độ dài byte, nên hai tên cùng khóa bị cắt
+        # khác nhau khi đánh số.
+        st.sampled_from(["a", "A", "ệ", "😀", "ﬁ", "FI", "ẞ", "ß", "SS", "İ"]),
+        st.sampled_from(["", "1", "2", "12", "x", "X", " (1)", " (10)"]),
+        st.sampled_from(["", ".txt", ".TXT", ".mp4"]),
+    ),
+    st.builds(
+        "{}{}{}".format,
+        st.sampled_from(["a", "A", "b", "file", "CON"]),
+        st.sampled_from(["", " (1)", " (2)", " (9)", " (10)", " (11)", " (100)"]),
+        st.sampled_from(["", ".txt", ".TXT"]),
+    ),
+)
+
+
+@pytest.mark.slow
+@settings(max_examples=300, deadline=None)
+@given(st.lists(st.one_of(REFERENCE_POOL, NAMES), max_size=40))
+def test_property_dedupe_matches_reference(fn, names):
+    assert fn.dedupe_offer_names(names) == _reference_dedupe(fn, names)
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["a.txt"] * 25 + ["a (1).txt", "a (10).txt", "A (11).TXT"],
+        ["a"] * 120,
+        [_long_name("a", d, ".txt") for d in ("1", "2", "3") for _ in range(6)],
+        [_long_name("a", f"{i:02d}", "") for i in range(15) for _ in range(2)],
+        # Cùng khóa, khác độ dài byte (255 và 254): bản cũ nhớ số theo khóa tên gốc nên B lấy
+        # ` (2)` dù tên đánh số của B với ` (1)` khác khóa với của A.
+        ["ﬁ" + "a" * 248 + ".txt"] * 2 + ["FI" + "a" * 248 + ".txt"],
+    ],
+)
+def test_dedupe_matches_reference_across_digit_bands(fn, names):
+    assert fn.dedupe_offer_names(names) == _reference_dedupe(fn, names)
+
+
+def test_dedupe_long_names_cut_to_same_prefix_is_fast(fn):
+    # 500 cặp tên 255 byte khác nhau ở 10 chữ số cuối thân: khi đánh số, `_fit` cắt mất phần
+    # khác nhau nên mọi bản trùng giành cùng một dãy tên. Bản cũ bậc hai mất vài giây.
+    names = ["a" * 241 + f"{i:010d}" + ".txt" for i in range(500) for _ in range(2)]
+    start = time.perf_counter()
+    out = fn.dedupe_offer_names(names)
+    elapsed = time.perf_counter() - start
+    assert len({key(o) for o in out}) == len(names)
+    assert elapsed < 0.5, f"{elapsed:.2f} s"
 
 
 # ---------------------------------------------------------------------------------------------
