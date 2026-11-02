@@ -340,6 +340,17 @@ def test_new_flash_restarts_countdown(tray, qtbot, monkeypatch):
     qtbot.waitUntil(lambda: t.state.clipboard is None, timeout=ms + 3000)
 
 
+def test_disposed_tray_ignores_pending_clipboard_timeout(tray, qtbot, monkeypatch):
+    """Khay đã `dispose()` (menu bị xóa) không vẽ lại khi hẹn giờ thông báo clipboard tới (lỗi CI PR #110)."""
+    ms = _flash_ms(monkeypatch)
+    t = tray.tray
+    t.flash_clipboard(notice("received", PEER))
+    t.dispose()
+    qtbot.wait(ms + 200)  # lỗi cũ: `_clear_clipboard` chạm QAction đã xóa → RuntimeError trong event loop
+    t.set_running(False)
+    t.set_activity(3)
+
+
 def test_flash_clipboard_shows_no_balloon(tray, qtbot):
     t = tray.tray
     for kind in ("received", "write_failed", "too_large"):
