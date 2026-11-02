@@ -60,7 +60,9 @@ mime): chỉ nhận URL file cục bộ (`send.local_paths`, không chạm đĩa
 (thả), `pick_files_requested(id)` (menu “Gửi file…”), `drop_hint_requested(câu)` (thả vào chỗ không
 có máy: `radar.drop_hint_text()`), `unpair_requested(id)`, `add_device_requested()`,
 `current_changed(id | None)`, `open_requested(id)` (Enter, bấm đúp: chọn máy đó rồi mở cuộc trò
-chuyện, `ui.chat` đặt tiêu điểm vào nút “Gửi file”).
+chuyện, `ui.chat` đặt tiêu điểm vào nút “Gửi file”). `device_id_at(row)` và `neighbor_id(step)` (so với
+máy được chọn, kẹp hai đầu, không vòng; chưa chọn: `step` > 0 → hàng đầu, < 0 → hàng cuối) cho phím
+tắt của cửa sổ (`ui.main_window`); tooltip của “＋” ghi kèm phím Tìm máy mới (`ui.shortcuts`).
 **Máy hiện hành = máy được chọn** (`current_device`): giữ qua `modelReset` (nhớ id rồi chọn lại) và qua
 lúc sắp lại. **Luôn có một cuộc trò chuyện được chọn khi danh sách có hàng** (spec B3 mục 6): sau
 `rowsInserted`, `modelReset`, `layoutChanged` và khi hàng đang chọn bị bỏ, chưa máy nào được chọn thì
@@ -140,7 +142,7 @@ from PySide6.QtWidgets import (
 from teleport.app.devices import DeviceView
 from teleport.app.transfers import Direction, TransferResult, TransferStatus
 from teleport.core.links import ConnectResult
-from teleport.ui import icons, send, texts, theme
+from teleport.ui import icons, send, shortcuts, texts, theme
 from teleport.ui.activity import EMPTY_ACTIVITY, ActiveTransfer, DeviceActivity, FinishedTransfer
 from teleport.ui.radar import (
     DEVICE_ID_ROLE,
@@ -1063,7 +1065,11 @@ class ConversationList(QWidget):
         self.list_view.metrics_changed.connect(self._on_metrics_changed)
 
         self.add_button = IconButton(
-            "add", QCoreApplication.translate("Conversations", "Ghép đôi máy mới"), self, show_text=True
+            "add",
+            QCoreApplication.translate("Conversations", "Ghép đôi máy mới"),
+            self,
+            shortcut=shortcuts.sequence(shortcuts.Shortcut.DISCOVER),
+            show_text=True,
         )
         self.add_button.setObjectName("addDeviceButton")
         self.add_button.clicked.connect(self.add_device_requested)
@@ -1114,6 +1120,25 @@ class ConversationList(QWidget):
         """View mới nhất của máy **được chọn**; không có → None."""
         device_id = self._selected_id()
         return None if device_id is None else self.model.device(device_id)
+
+    def device_id_at(self, row: int) -> str | None:
+        """Mã máy ở hàng `row` (thứ tự đang hiện); không có hàng đó → None."""
+        if not 0 <= row < self.model.rowCount():
+            return None
+        value = self.model.index(row, 0).data(DEVICE_ID_ROLE)
+        return value if isinstance(value, str) else None
+
+    def neighbor_id(self, step: int) -> str | None:
+        """Mã máy cách máy được chọn `step` hàng (âm: lên trên); ra ngoài danh sách → None (không
+        vòng). Chưa chọn máy nào: `step` > 0 → hàng đầu, `step` < 0 → hàng cuối, 0 → None."""
+        rows = self.model.rowCount()
+        selected = self._selected_id()
+        current = -1 if selected is None else self.model.row_of(selected)
+        if current < 0:
+            if step == 0 or rows == 0:
+                return None
+            return self.device_id_at(0 if step > 0 else rows - 1)
+        return self.device_id_at(current + step) if step else selected
 
     def select_device(self, device_id: str) -> bool:
         """Chọn máy (làm máy hiện hành); không có trong danh sách → False."""

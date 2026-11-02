@@ -152,7 +152,7 @@ Mỗi tính năng có các user story (US) và tiêu chí chấp nhận (AC). M�
 - **US-06:** Tôi muốn kéo một hoặc nhiều file thả lên máy ở cột trái để gửi.
 - **US-07:** Là người nhận, tôi muốn biết ai gửi gì và được quyền từ chối.
 - **AC:**
-  - Kéo thả (lên một máy ở cột trái, hay vào luồng của máy đang mở), hoặc “Gửi file” (nút ở thanh dưới luồng của máy đang chọn, phím Ctrl+O, hay chuột phải vào thiết bị → “Gửi file…”), đều được; hỗ trợ chọn nhiều file. Enter hay bấm đúp một máy ở cột trái mở cuộc trò chuyện với máy đó (tiêu điểm tới nút “Gửi file”).
+  - Kéo thả (lên một máy ở cột trái, hay vào luồng của máy đang mở), hoặc “Gửi file” (nút ở thanh dưới luồng của máy đang chọn, phím Ctrl+O, hay chuột phải vào thiết bị → “Gửi file…”), đều được; hỗ trợ chọn nhiều file. Chép file trong File Explorer (macOS: Finder) rồi nhấn Ctrl+V trong cửa sổ chính khi đang mở luồng của một máy cũng gửi ngay như thả file, không hỏi lại; chỉ gửi bản sao, kể cả khi chép bằng “Cắt”; Ctrl+V trong ô nhập chữ vẫn dán chữ như thường; clipboard không phải file thì không gửi gì (mục 8). Enter hay bấm đúp một máy ở cột trái mở cuộc trò chuyện với máy đó (tiêu điểm tới nút “Gửi file”).
   - Mỗi file tối đa 4 TB (2⁴² byte, [protocol.md](protocol.md) mục 3.3). File lớn hơn bị chặn ngay lúc chọn, trước khi gửi gì cho máy kia (mục 8).
   - Máy nhận hiện hộp thoại: tên người gửi, danh sách file, tổng dung lượng, nút **Nhận** / **Từ chối**; hoặc, khi đang mở đúng cuộc trò chuyện với máy gửi, một bong bóng lời mời có cùng các nút; trả lời ở một chỗ thì chỗ kia đóng (mục 7.3). Có tùy chọn “Luôn nhận từ thiết bị này” (tương đương tắt “Hỏi trước khi nhận” của thiết bị đó trong cài đặt).
   - Không đủ dung lượng trống → máy nhận tự từ chối ngay, máy gửi được báo cần bao nhiêu và còn bao nhiêu.
@@ -214,7 +214,7 @@ Mỗi tính năng có các user story (US) và tiêu chí chấp nhận (AC). M�
   - Cho máy chưa ghép đôi thấy máy này (**mặc định bật**)
   - Theo từng thiết bị tin cậy: Hỏi trước khi nhận · Đồng bộ clipboard · Hủy ghép đôi
   - Giới hạn tốc độ gửi · Dọn file tạm sau N ngày (mặc định 7)
-  - Kiểm tra cập nhật (**mặc định tắt**; có từ giai đoạn 6) · Xuất log
+  - Kiểm tra cập nhật (**mặc định tắt**; có từ giai đoạn 6) · Xuất log · Phím tắt (chỉ xem, không đổi được phím)
   - “Khởi động cùng hệ điều hành” hiện có trên Windows (ẩn trên hệ điều hành chưa hỗ trợ)
 - **AC của “Cho máy chưa ghép đôi thấy máy này”** (bật: máy này đang *hiện*; tắt: đang *ẩn*):
   - Tắt thì máy này ngừng quảng bá trên mạng và biến mất khỏi radar của máy khác như khi thoát app (N1). Bật lại thì máy này quảng bá lại ngay.
@@ -300,7 +300,7 @@ Máy A: Ctrl+C một đoạn văn ──► (< 0,5s) ──► Máy B: Ctrl+V d�
 - ⌕ mở màn “Tìm máy mới” (radar, có “Nhập IP thủ công” và “Chờ ghép đôi”).
 - Chưa ghép đôi máy nào thì bên phải là “Ghép đôi máy đầu tiên”.
 - Cửa sổ hẹp thì cột trái thu gọn, chỉ còn avatar (tên và trạng thái ở chú thích khi trỏ chuột).
-- Bên phải là luồng của máy đang chọn: gửi đi nằm bên phải, nhận vào nằm bên trái (câu chữ của từng lượt: mục 7.3). Thanh dưới luồng có “Gửi file” (Ctrl+O) và câu “hoặc kéo file vào đây”; không gửi được cả thư mục (mục 4). Clipboard vừa nhận từ máy đó hiện thành một dòng mảnh ở cuối luồng (không phải bong bóng; mỗi luồng chỉ giữ dòng mới nhất, chỉ trong lần mở app này): “Clipboard · đã chép vào máy này” hay “Clipboard · chưa chép được vào máy này” kèm nút “Thử lại”, dòng dưới là dòng đầu của văn bản hay “Ảnh *1920* × *1080* · *2,4 MB*”. Nút gửi clipboard thủ công để sau (máy gửi chưa biết máy kia đã bật đồng bộ hay chưa). Mốc sự kiện trong luồng (“Đã ghép đôi · 28/10”, “Mất kết nối”) để sau; luồng chỉ có mốc thời gian.
+- Bên phải là luồng của máy đang chọn: gửi đi nằm bên phải, nhận vào nằm bên trái (câu chữ của từng lượt: mục 7.3). Thanh dưới luồng có “Gửi file” (Ctrl+O) và câu “hoặc kéo file vào đây”; Ctrl+V gửi các file vừa chép trong File Explorer tới máy đang mở (F4); không gửi được cả thư mục (mục 4). Clipboard vừa nhận từ máy đó hiện thành một dòng mảnh ở cuối luồng (không phải bong bóng; mỗi luồng chỉ giữ dòng mới nhất, chỉ trong lần mở app này): “Clipboard · đã chép vào máy này” hay “Clipboard · chưa chép được vào máy này” kèm nút “Thử lại”, dòng dưới là dòng đầu của văn bản hay “Ảnh *1920* × *1080* · *2,4 MB*”. Nút gửi clipboard thủ công để sau (máy gửi chưa biết máy kia đã bật đồng bộ hay chưa). Mốc sự kiện trong luồng (“Đã ghép đôi · 28/10”, “Mất kết nối”) để sau; luồng chỉ có mốc thời gian.
 - “Đổi…” ở chân cửa sổ đổi thư mục nhận chung cho mọi thiết bị; thư mục mới được lưu và dùng cho các lần mở app sau. Thư mục nhận đã lưu không mở được lúc mở app thì app vẫn chạy nhưng không nhận file: thẻ máy này ghi “Không nhận file”, chân cửa sổ nói thư mục nào hỏng và vẫn có “Đổi…” (câu chữ ở mục 8).
 - Không hiện tên Wi-Fi.
 
@@ -591,6 +591,8 @@ Dung lượng hiển thị cho người dùng tính theo hệ nhị phân, như 
 | Giao diện: địa chỉ của máy này (để nhập IP thủ công ở máy kia) | Khi Teleport đang chạy: dòng chọn được “Địa chỉ: *192.168.1.5*” (thêm “:*cổng*” khi không phải cổng mặc định, [protocol.md](protocol.md) mục 2.1); máy có nhiều địa chỉ thì hiện địa chỉ đầu, các địa chỉ còn lại ở chú thích khi trỏ chuột: “Các địa chỉ khác của máy này: …”. Cập nhật khi đổi mạng (đọc lại mỗi 10 giây). Không đọc được địa chỉ nào thì không hiện dòng này | — |
 | Giao diện: chưa có lượt truyền nào trong lần mở app này | “Kéo file vào một thiết bị để gửi” (ở khung lượt truyền) | — |
 | Giao diện: thả file vào chỗ không có máy ở cột trái | “Thả file lên một thiết bị để gửi.” | — |
+| Giao diện: nhấn Ctrl+V trong luồng của một máy mà clipboard không phải file đã chép (chữ, ảnh, liên kết web) | “Ctrl+V ở đây chỉ gửi file đã chép trong File Explorer. Chữ và ảnh đi qua “Đồng bộ clipboard” với *PC-Nha* (Cài đặt ▸ Thiết bị tin cậy, cần bật ở cả hai máy): chép ở máy này rồi dán thẳng ở máy kia.” (macOS: “Finder”, Linux: “trình quản lý file”) | Nút “Mở Cài đặt”: mở Thiết bị tin cậy, tiêu điểm ở “Đồng bộ clipboard” của máy đó |
+| Giao diện: nhấn Ctrl+V để gửi file khi chưa chọn máy nào | “Ghép đôi một máy trước (Ctrl+N), rồi nhấn Ctrl+V để gửi file đã chép.” | — |
 | Giao diện: gửi tới thiết bị chưa ghép đôi | Mở luồng ghép đôi (mục 7.2); ghép xong thì tự gửi | — |
 | Giao diện: gửi tiếp khi đang chờ ghép đôi để gửi một lượt khác | “Đang chờ ghép đôi với *PC-Nha* để gửi file. Hãy chờ xong rồi gửi tiếp.” (*PC-Nha* là máy đang chờ ghép đôi, không phải máy vừa được chọn gửi) | Chờ lần ghép đôi đang chạy xong rồi gửi lại |
 | Giao diện: gửi tới thiết bị mà lần kết nối gần nhất bị chặn, hoặc lần kết nối mở cho chính lượt gửi đó bị chặn | Câu của dòng “Máy kia từ chối máy này”, “Danh tính thiết bị thay đổi” hoặc “Khác phiên bản giao thức” | Lượt gửi không bắt đầu; lượt đã hiện trên danh sách mà chưa gửi được lời mời thì bị gỡ, không chờ nối lại. Kèm nút trên dải thông báo: bị từ chối → “Ghép đôi lại”; danh tính thay đổi → “Hủy ghép đôi” (hỏi xác nhận kèm cảnh báo); khác phiên bản → không có nút |
