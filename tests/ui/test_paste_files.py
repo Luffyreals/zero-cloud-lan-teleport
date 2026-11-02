@@ -642,13 +642,8 @@ def offscreen_clipboard(qapp):
     if QGuiApplication.platformName() != "offscreen":
         pytest.skip("chỉ chạy trên nền offscreen: không chạm clipboard thật của máy")
     board = QApplication.clipboard()
-    old = board.mimeData()
-    saved = QMimeData()
-    if old is not None:
-        for fmt in old.formats():
-            saved.setData(fmt, old.data(fmt))
     yield board
-    board.setMimeData(saved)
+    board.clear()
 
 
 def test_s5_line_edit_in_window_pastes_text_not_send(win, monkeypatch, offscreen_clipboard):
