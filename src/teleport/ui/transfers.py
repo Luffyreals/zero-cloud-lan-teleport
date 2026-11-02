@@ -25,7 +25,7 @@ nhận” của cả hai → `book.set_always`), nên mỗi offer có đúng m�
 theo thứ tự: đọc `app_active()`; `TransferFinished` → `book.finish` (hộp và panel đóng trước khi bong
 bóng vẽ kết quả); `OfferReceived` chưa tự nhận → đọc `offer_in_view(id)` **trước** khi chèn bong bóng,
 `view.handle`, `book.add(connected=…)` (theo `window.devices`), thêm được mà không `in_view` thì
-`offers.show_prompt`. `offer_in_view(id)` đúng khi cửa sổ chính đang active
+`offers.show_prompt`. `offer_in_view(id)` (gọi `thread_in_view(id)`) đúng khi cửa sổ chính đang active
 (`default_window_active()` cấp module, đọc lúc gọi), đang hiện và không thu nhỏ, RUNNING, ở trang HOME,
 đang mở luồng của `id` và luồng đó ở cuối: chỉ khi người dùng thật sự thấy lời mời thì bong bóng mới
 đủ, còn lại bật hộp. Cửa sổ thu nhỏ hay bị ẩn (`eventFilter` trên cửa sổ: `WindowStateChange` sang thu
@@ -99,16 +99,31 @@ file người dùng (D7); việc kiểm file do `transfers.send` làm trên `Dis
 **Thông báo**: lỗi chọn gửi hiện ở thanh thông báo của luồng chat (`view.show_notice`, mức ERROR),
 không hộp chặn. Khay: có `offer` chờ trả lời → `texts.offer_waiting()`, **chỉ khi app không được dùng**
 (`app_active()` False: không cửa sổ nào của app đang active; đọc trước khi mở hộp hỏi, vì hộp mới
-mở có thể giành active); nhận xong một lượt → câu mvp mục 8 “Đã nhận *n* file từ *X*.” (luôn
-hiện; một file: tên file thật đã lưu, lấy từ `FileDone.path.name` cuối, có thể là `ten (1).ext`;
-chưa có thì tên trong `offer`), kèm `folder` để bấm bóng thoại mở thư mục: thư mục cha của file đã
-lưu cuối, không có thì thư mục nhận hiện tại (`set_receive_dir`). Tên máy kia qua
-`texts.peer_label`, tên file qua `texts.file_label`; bóng thoại khay là chữ thuần.
+mở có thể giành active). Bóng thoại đó không bị gộp.
+
+**Nhận xong** (theo dõi tiến độ khi chạy nền, `plan-f-ux-hang-ngay` F4): `TransferFinished` DONE chiều
+nhận → đọc `thread_in_view(id)` **trước** `view.handle` (như `in_view` của lời mời; kiểm lúc lượt kết
+thúc, không kiểm lại lúc hiện). Đang xem đúng luồng đó → không báo. Không thì lượt vào nhóm
+`ui.notify.ReceivedBatch` (tên máy qua `texts.peer_label`; một file: tên file thật đã lưu, lấy từ
+`FileDone.path.name` cuối, có thể là `ten (1).ext`, chưa có thì tên trong `offer`; các `FileDone.path`
+của lượt, tối đa `shell.REVEAL_MAX_ITEMS` cuối; thư mục nhận hiện tại làm `root`) với mốc `_monotonic()`
+(seam cấp module, đọc lúc gọi). Sau `add`: `due` ≤ 0 → `flush_notifications()` đồng bộ; không thì hẹn
+`_notify_timer` (`QTimer` một lần; tới giờ mà `due` còn > 0 thì hẹn lại). `flush_notifications()` →
+**một** bóng thoại `notify.received_batch_text` (“Đã nhận 3 file từ PC-Nha.”, “Đã nhận 4 file từ 2
+máy.”) kèm `folder=notify.batch_reveal(...)` (`shell.Reveal`: bấm thì `ui.app` để Explorer chọn sẵn
+file). `attach` / `close_all` → bỏ nhóm đang gộp, không hiện. Bóng thoại khay là chữ thuần.
+
+**% tổng khi chạy nền** (`ui.progress`): `_update_progress()` (cuối `on_transfer`, trong
+`_update_summary`, và khi `_progress_timer` tới giờ) dựng `ProgressItem` từ `view.rows()`, qua
+`ProgressBatch.update` rồi `ProgressThrottle.feed(…, _monotonic())`; giá trị đổi → **cùng một giá
+trị** vào `MainWindow.set_progress` (tiêu đề “60% · ZCL Teleport”) và `Tray.set_progress` (tooltip);
+đang giữ đích thì hẹn `_progress_timer` (`QTimer` một lần) theo `pending_delay`. Sau `close_all` thì
+không làm gì; `attach` / `close_all` xóa đợt, dừng hẹn, đặt None cho cửa sổ và khay.
 
 **Tóm tắt cho cửa sổ chính và khay**: mỗi `view.content_changed` (và một lần lúc dựng) gọi
 `MainWindow.set_transfer_summary(has_content(), active_count())` (huy hiệu “Đang truyền n lượt”, màn
 rỗng của khung phải, nút “Mở thư mục” cuối chuỗi Tab) và `Tray.set_activity(active_count())` (dấu
-biểu tượng và tooltip khay, spec D4).
+biểu tượng và tooltip khay, spec D4), rồi `_update_progress()`.
 
 **Lượt gửi dở** (`active_sends()`): tên hiển thị các máy đang có lượt gửi chưa kết thúc, theo các
 bong bóng của phiên trong luồng chat (`view.rows()`, không gọi node); `ui.app` dùng để hỏi lại trước
@@ -121,6 +136,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import math
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Sequence
@@ -153,12 +169,15 @@ from teleport.app.transfers import (
 )
 from teleport.core import pairing
 from teleport.core.links import ConnectResult
-from teleport.ui import send, texts
+from teleport.ui import send, shell, texts
 from teleport.ui.activity import ActivityTracker, FinishedTransfer, latest_by_device
 from teleport.ui.bridge import NodeHost
 from teleport.ui.chat import ChatView
+from teleport.ui.chat_bubbles import TransferBubble
 from teleport.ui.main_window import MainWindow, Page, ViewState
+from teleport.ui.notify import ReceivedBatch, batch_reveal, received_batch_text
 from teleport.ui.offer import OfferBook, OfferPhase, OfferPrompts, always_save_error_text
+from teleport.ui.progress import ProgressBatch, ProgressItem, ProgressThrottle
 from teleport.ui.tray import Tray
 from teleport.ui.widgets import InfoLevel
 
@@ -166,6 +185,8 @@ from teleport.ui.widgets import InfoLevel
 file_dialog_factory: Callable[[QWidget | None], QFileDialog] = QFileDialog
 # Seam: giờ tường (giây epoch) làm mốc hoạt động của lượt; đọc lúc gọi.
 _wall_now: Callable[[], float] = time.time
+# Seam: đồng hồ monotonic (giây) cho nhịp % tổng và hẹn bóng thoại “Đã nhận…”; đọc lúc gọi.
+_monotonic: Callable[[], float] = time.monotonic
 
 log = logging.getLogger(__name__)
 
@@ -249,19 +270,6 @@ def pair_wait_text(peer: str) -> str:
     )
 
 
-def received_text(info: TransferInfo, peer: str, saved_name: str | None = None) -> str:
-    """Bóng thoại khay khi nhận xong một lượt (mvp mục 8). `peer` đã qua `peer_label`.
-
-    Một file: tên file thật đã lưu (`saved_name`, từ `FileDone.path.name`; có thể đã thành
-    `ten (1).ext` để không ghi đè) khi có, không thì tên trong `offer`.
-    """
-    t = QCoreApplication.translate
-    if len(info.files) == 1 and (saved_name or info.names):
-        name = saved_name or info.names[0]
-        return texts.fill(t("Transfers", "Đã nhận {file} từ {name}."), file=texts.file_label(name), name=peer)
-    return texts.fill(t("Transfers", "Đã nhận %n file từ {name}.", None, len(info.files)), name=peer)
-
-
 def repair_action_text() -> str:
     """Nút của thông báo “*X* từ chối kết nối từ máy này” (mvp mục 8, “Máy kia từ chối máy này”)."""
     return QCoreApplication.translate("Transfers", "Ghép đôi lại")
@@ -305,7 +313,8 @@ class TransfersController(QObject):
         self._host: NodeHost | None = None
         self._names: dict[str, str | None] = {}
         self._offer_names: dict[TransferKey, str | None] = {}
-        self._saved_paths: dict[TransferKey, Path] = {}  # file thật đã lưu cuối (`FileDone.path`)
+        # File thật đã lưu (`FileDone.path`) của lượt nhận, tối đa `shell.REVEAL_MAX_ITEMS` cuối.
+        self._saved_paths: dict[TransferKey, list[Path]] = {}
         self._pending: tuple[str, list[Path]] | None = None  # “ghép rồi gửi” đang chờ
         self._unoffered: set[TransferKey] = set()  # lượt gửi mới: `offer` chưa từng đi (bước 3)
         self._dropped: set[TransferKey] = set()  # bong bóng đã gỡ, đang chờ `TransferFinished` của lần hủy
@@ -320,6 +329,18 @@ class TransfersController(QObject):
         self._closing = False  # `close_all` đã chạy: bỏ kết quả đọc lịch sử về muộn
         self.activity = ActivityTracker()
         self._receive_dir: Path | None = None
+        # % tổng trên tiêu đề cửa sổ và tooltip khay (`ui.progress`); dựng trước `_update_summary` đầu.
+        self._batch = ProgressBatch()
+        self._throttle = ProgressThrottle()
+        self._progress: int | None = None  # giá trị đã đẩy vào cửa sổ và khay
+        self._progress_timer = QTimer(self)
+        self._progress_timer.setSingleShot(True)
+        self._progress_timer.timeout.connect(self._update_progress)
+        # Gộp bóng thoại “Đã nhận…” (`ui.notify`).
+        self._notify = ReceivedBatch()
+        self._notify_timer = QTimer(self)
+        self._notify_timer.setSingleShot(True)
+        self._notify_timer.timeout.connect(self._schedule_notify)
 
         self.offer_book = OfferBook(self)
         self.view = ChatView(window.devices, window.transfers_area)
@@ -367,8 +388,8 @@ class TransfersController(QObject):
         return self._pending
 
     def attach(self, host: NodeHost | None) -> None:
-        """Dùng `host` mới: xóa lời mời, lượt, hoạt động và thông báo, đóng hộp hỏi, bỏ việc chờ, đặt thư
-        mục nhận."""
+        """Dùng `host` mới: xóa lời mời, lượt, hoạt động và thông báo (kể cả bóng thoại “Đã nhận…” đang
+        gộp, không hiện), % tổng về None, đóng hộp hỏi, bỏ việc chờ, đặt thư mục nhận."""
         self._host = host
         self.offer_book.clear()  # trước `view.clear()` và `offers.close_all()` (spec B4 mục 11.2)
         self.view.clear()
@@ -384,6 +405,7 @@ class TransfersController(QObject):
         self._sources = OrderedDict()
         self._started = None
         self._history_waiting = None
+        self._reset_background()
         self.view.set_device_names(self._names)
         receive_dir = None if host is None else host.options.receive_dir
         self.set_receive_dir(receive_dir if isinstance(receive_dir, Path) else None)
@@ -429,11 +451,13 @@ class TransfersController(QObject):
             self._load_thread_history(host, waiting)
 
     def close_all(self) -> None:
-        """App đang thoát: đóng hộp hỏi và hộp chọn file, bỏ việc chờ."""
+        """App đang thoát: đóng hộp hỏi và hộp chọn file, bỏ việc chờ, bỏ bóng thoại “Đã nhận…” đang
+        gộp (không hiện), tiêu đề và tooltip về không có %."""
         self._closing = True
         self.offer_book.clear()  # trước `offers.close_all()`: không quyết định gì
         self.offers.close_all()
         self._drop_pending()
+        self._reset_background()
         dialog, self._dialog = self._dialog, None
         if dialog is not None:
             dialog.close()
@@ -502,6 +526,17 @@ class TransfersController(QObject):
         asking = isinstance(update, OfferReceived) and not update.auto_accepted
         # Đọc trước khi chèn bong bóng: luồng còn đang ở cuối.
         in_view = asking and isinstance(update, OfferReceived) and self.offer_in_view(update.key.device_id)
+        received = (
+            isinstance(update, TransferFinished)
+            and update.result is TransferResult.DONE
+            and update.info.key.direction is Direction.RECEIVE
+        )
+        # Như `in_view`: đọc trước khi bong bóng vẽ kết quả (luồng còn đang ở cuối).
+        thread_seen = (
+            received
+            and isinstance(update, TransferFinished)
+            and self.thread_in_view(update.info.key.device_id)
+        )
         self.view.handle(update)
         if asking and isinstance(update, OfferReceived):
             device = self._window.devices.device(update.key.device_id)
@@ -515,28 +550,20 @@ class TransfersController(QObject):
                 self._tray.show_message(texts.offer_waiting())
         elif isinstance(update, FileDone):
             if update.key.direction is Direction.RECEIVE and update.path is not None and update.path.name:
-                self._saved_paths[update.key] = update.path
+                limit = max(1, int(shell.REVEAL_MAX_ITEMS))
+                saved = self._saved_paths.setdefault(update.key, [])
+                saved.append(update.path)
+                del saved[:-limit]
         elif isinstance(update, TransferFinished):
             key = update.info.key
             self._unoffered.discard(key)
             if update.result in _NO_RESEND:
                 self._sources.pop(key, None)
             offer_name = self._offer_names.pop(key, None)
-            saved_path = self._saved_paths.pop(key, None)
-            if update.result is TransferResult.DONE and key.direction is Direction.RECEIVE:
-                name = self._names.get(key.device_id) or offer_name
-                if saved_path is not None:
-                    folder: Path | None = saved_path.parent
-                else:
-                    folder = self._receive_dir
-                self._tray.show_message(
-                    received_text(
-                        update.info,
-                        texts.peer_label(name, key.device_id),
-                        None if saved_path is None else saved_path.name,
-                    ),
-                    folder=folder,
-                )
+            saved_paths = self._saved_paths.pop(key, [])
+            if received and not thread_seen:
+                self._add_received(update.info, offer_name, saved_paths)
+        self._update_progress()
 
     # ---- Gửi ---------------------------------------------------------------------------------
 
@@ -637,6 +664,12 @@ class TransfersController(QObject):
 
     def offer_in_view(self, device_id: str) -> bool:
         """Người dùng đang thấy cuối luồng của `device_id` (lời mời từ máy đó chỉ cần bong bóng)."""
+        return self.thread_in_view(device_id)
+
+    def thread_in_view(self, device_id: str) -> bool:
+        """Người dùng đang thấy cuối luồng của `device_id`: cửa sổ chính active, đang hiện, không thu
+        nhỏ, RUNNING, trang HOME, đang mở luồng đó và luồng ở cuối. Lời mời từ máy đó chỉ cần bong
+        bóng; lượt nhận xong từ máy đó không có bóng thoại “Đã nhận…”."""
         window = self._window
         return bool(
             default_window_active()
@@ -706,6 +739,77 @@ class TransfersController(QObject):
         active = self.view.active_count()
         self._window.set_transfer_summary(self.view.has_content(), active)
         self._tray.set_activity(active)
+        self._update_progress()
+
+    # ---- Chạy nền: % tổng, bóng thoại “Đã nhận…” ----------------------------------------------
+
+    def flush_notifications(self) -> None:
+        """Hiện ngay bóng thoại của nhóm “Đã nhận…” đang gộp (nếu có) và dừng hẹn của nó."""
+        self._notify_timer.stop()
+        summary = self._notify.take()
+        if summary is None:
+            return
+        self._tray.show_message(received_batch_text(summary), folder=batch_reveal(summary))
+
+    def _add_received(self, info: TransferInfo, offer_name: str | None, saved_paths: list[Path]) -> None:
+        """Lượt nhận DONE (người dùng không đang xem luồng của máy đó) vào nhóm “Đã nhận…”.
+
+        Một file: tên file thật đã lưu (`FileDone.path.name` cuối; có thể đã thành `ten (1).ext` để
+        không ghi đè) khi có, không thì tên trong `offer`."""
+        device_id = info.key.device_id
+        single: str | None = None
+        if len(info.files) == 1:
+            single = saved_paths[-1].name if saved_paths else (info.names[0] if info.names else None)
+        self._notify.add(
+            device_id,
+            texts.peer_label(self._names.get(device_id) or offer_name, device_id),
+            len(info.files),
+            saved_paths,
+            single,
+            self._receive_dir,
+            _monotonic(),
+        )
+        self._schedule_notify()
+
+    def _schedule_notify(self) -> None:
+        """Tới hạn thì hiện nhóm “Đã nhận…” (đồng bộ), chưa thì hẹn `_notify_timer` theo `due`."""
+        due = self._notify.due(_monotonic())
+        if due is None:
+            self._notify_timer.stop()
+        elif due <= 0:
+            self.flush_notifications()
+        else:
+            self._notify_timer.start(max(1, math.ceil(due * 1000)))
+
+    def _update_progress(self) -> None:
+        """% tổng của các bong bóng trong phiên → tiêu đề cửa sổ và tooltip khay (cùng một giá trị),
+        qua `ProgressBatch` và `ProgressThrottle`; giữ đích thì hẹn `_progress_timer` gọi lại."""
+        if self._closing:
+            return
+        now = _monotonic()
+        percent = self._batch.update(_progress_item(row) for row in self.view.rows())
+        value = self._throttle.feed(percent, now)
+        if value != self._progress:
+            self._set_progress(value)
+        delay = self._throttle.pending_delay(now)
+        if delay is None:
+            self._progress_timer.stop()
+        else:
+            self._progress_timer.start(max(1, math.ceil(delay * 1000)))
+
+    def _set_progress(self, value: int | None) -> None:
+        self._progress = value
+        self._window.set_progress(value)
+        self._tray.set_progress(value)
+
+    def _reset_background(self) -> None:
+        """Host mới / Thoát: bỏ nhóm “Đã nhận…” đang gộp (không hiện), xóa đợt %, tiêu đề về tên app."""
+        self._notify.clear()
+        self._notify_timer.stop()
+        self._batch.clear()
+        self._throttle.reset()
+        self._progress_timer.stop()
+        self._set_progress(None)
 
     def _peer(self, device_id: str, view: DeviceView | None) -> str:
         name = view.name if view is not None else self._names.get(device_id)
@@ -867,6 +971,26 @@ class TransfersController(QObject):
     def _log_error(what: str, result: object) -> None:
         if isinstance(result, BaseException):
             log.warning("không %s được: %s", what, type(result).__name__)
+
+
+_MOVING = (TransferStatus.TRANSFERRING, TransferStatus.VERIFYING)
+
+
+def _progress_item(bubble: TransferBubble) -> ProgressItem:
+    """`ProgressItem` của một bong bóng trong phiên (nguồn % tổng, `ui.progress`)."""
+    result = bubble.result
+    finished = bubble.finished
+    return ProgressItem(
+        key=bubble.key,
+        shown=bubble.shown_bytes,
+        total=bubble.total_bytes,
+        finished=finished,
+        done=result is not None and result.result is TransferResult.DONE,
+        moving=not finished and bubble.status in _MOVING,
+        queued_send=(
+            not finished and bubble.key.direction is Direction.SEND and bubble.status is TransferStatus.QUEUED
+        ),
+    )
 
 
 def _update_key(update: TransferUpdate) -> TransferKey | None:

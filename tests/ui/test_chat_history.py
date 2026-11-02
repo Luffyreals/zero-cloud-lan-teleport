@@ -31,7 +31,7 @@ UTC = datetime.UTC
 
 SAVED = "Đã lưu"
 SENT = "Đã gửi"
-OPEN_FOLDER = "Mở thư mục"
+OPEN_FOLDER = "Hiện trong thư mục"  # spec-f4 mục 2.4 (trước: “Mở thư mục”)
 HISTORY_FAILED = "Không đọc được lịch sử với máy này."
 OPEN_FAILED = "Không mở được thư mục {path}. Thư mục có thể đã bị xóa, đổi tên hay nằm trên ổ đã rút ra."
 
@@ -610,7 +610,7 @@ def test_h6_hostile_history_name_is_plain(view, qtbot):
 
 
 # =================================================================================================
-# H7 “Mở thư mục” của mục lịch sử
+# H7 “Hiện trong thư mục” của mục lịch sử (spec-f4: trước là “Mở thư mục”)
 # =================================================================================================
 
 

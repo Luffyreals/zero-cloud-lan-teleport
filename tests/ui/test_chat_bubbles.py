@@ -37,7 +37,7 @@ OTHER = "Laptop-Minh"
 # ---- Chữ mới của B3 (spec mục 4, 9.8) -----------------------------------------------------------
 SAVED = "Đã lưu"
 SENT = "Đã gửi"
-OPEN_FOLDER = "Mở thư mục"
+OPEN_FOLDER = "Hiện trong thư mục"  # spec-f4 mục 2.4 (trước: “Mở thư mục”)
 RESEND = "Gửi lại"
 CANCEL = "Hủy"
 

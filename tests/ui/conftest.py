@@ -22,6 +22,10 @@ Fixture chính:
 - `peer_node`: một `Node` thật (máy gửi B) chạy event loop riêng trong một thread.
 - `ui_helpers`: hàm phụ trợ (test không import được conftest).
 - `aumid_registration` (tự dùng): `main` không ghi registry thật; fixture trả hàm đăng ký thật.
+- `fake_select_native` (tự dùng): `ui.shell._select_native` giả, không mở Explorer thật; fixture trả
+  bản ghi lời gọi (spec-f4 S6).
+- `notify_immediate` (tự dùng): thông báo “Đã nhận…” không hoãn; tắt bằng marker `real_notify_delay`
+  (spec-f4 S7).
 - `ui_language_reset` (tự dùng): ngôn ngữ của hệ điều hành coi là tiếng Việt và mỗi test kết thúc ở
   chuỗi nguồn, để test không phụ thuộc locale của máy chạy test (có `teleport_en.qm` rồi).
 - `motion_instant` (tự dùng): `ui/motion.py` ở chế độ tức thì (`_force_instant(True)`): mọi helper
@@ -248,6 +252,54 @@ def aumid_registration(monkeypatch):
     real = app._register_app_user_model_id
     monkeypatch.setattr(app, "_register_app_user_model_id", lambda config_dir: None)
     return real
+
+
+class NativeSelectSpy:
+    """Bản giả của `ui.shell._select_native`: ghi `(target, picks)` mỗi lần gọi.
+
+    `result` (mặc định False → `show_in_folder` về `open_url` mà test đã vá) là giá trị trả; `error`
+    khác None thì ném lỗi đó thay vì trả.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[Path, tuple[Path, ...]]] = []
+        self.result = False
+        self.error: BaseException | None = None
+
+    def __call__(self, target, picks) -> bool:
+        self.calls.append((target, tuple(picks)))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
+@pytest.fixture(autouse=True)
+def fake_select_native(monkeypatch) -> NativeSelectSpy:
+    """Mọi test ui: không bao giờ mở Explorer thật (spec-f4 S6, như `aumid_registration`).
+
+    `ui.shell._select_native` thành `NativeSelectSpy` (mặc định trả False: luồng về `open_url`). Test cần
+    kiểm lời gọi native xin fixture này để đọc `calls`, hay đặt `result = True` / `error`.
+    """
+    from teleport.ui import shell
+
+    spy = NativeSelectSpy()
+    monkeypatch.setattr(shell, "_select_native", spy)
+    return spy
+
+
+@pytest.fixture(autouse=True)
+def notify_immediate(request, monkeypatch) -> None:
+    """Mọi test ui: thông báo “Đã nhận…” không hoãn (`NOTIFY_QUIET = NOTIFY_MAX_WAIT = 0`, spec-f4 S7),
+    nên `TransfersController` flush đồng bộ ngay khi lượt nhận xong, như trước khi có gộp.
+
+    Test gộp thật gắn `@pytest.mark.real_notify_delay` (hằng thật, hay tự vá).
+    """
+    if request.node.get_closest_marker("real_notify_delay") is not None:
+        return
+    from teleport.ui import notify
+
+    monkeypatch.setattr(notify, "NOTIFY_QUIET", 0)
+    monkeypatch.setattr(notify, "NOTIFY_MAX_WAIT", 0)
 
 
 @pytest.fixture(autouse=True)

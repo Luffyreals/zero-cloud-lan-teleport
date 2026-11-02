@@ -594,21 +594,18 @@ async def test_memory_is_flat_after_1000_clips(clip_net, monkeypatch):
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "net: Connection.close abort khi máy kia còn gửi dữ liệu sau close_notify "
-        "(APPLICATION_DATA_AFTER_CLOSE_NOTIFY) → RST bỏ cả `cancel` còn nằm sau các khung clip "
-        "trong bộ đệm socket; cần sửa ở tầng net (báo cáo P5-1)"
-    ),
-)
 async def test_close_while_sending_big_clip_still_delivers_cancel(transfer_nodes, tmp_path, monkeypatch):
     """B gửi file cho A và đang gửi một ảnh 10 MiB qua kết nối điều khiển mà A đọc chậm (~1 MB/s với
     khung `clipboard`); `B.close()` → A vẫn nhận `cancel{user}` (lượt kết thúc `CANCELLED_USER`, by_peer),
-    không phải mất kết nối rồi “Đang nối lại…”."""
+    không phải mất kết nối rồi “Đang nối lại…”.
+
+    `CLOSE_TIMEOUT` về lại 5 s thật (fixture `fast` rút còn 0,5 s), vá trước khi tạo node vì
+    `ssl_shutdown_timeout` đặt lúc mở kết nối: A đọc phần đuôi còn trong bộ đệm socket ~1 MB/s nên
+    lần đóng gọn của B cần hơn 0,5 s; hết hạn thì B abort (RST) và A mất `cancel` dù tầng net đúng."""
     from teleport.app.transfers import TransferResult
 
     monkeypatch.setattr(app_clip, "CLIP_DEBOUNCE", DEBOUNCE)
+    monkeypatch.setattr(connection, "CLOSE_TIMEOUT", 5.0)
     real_receive = connection.Connection.receive
     started: list[Clipboard] = []
     real_send = connection.Connection.send

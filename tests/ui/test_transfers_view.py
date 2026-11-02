@@ -53,7 +53,7 @@ WAIT_OFFLINE_SEND = "Đang chờ kết nối tới {p}…"  # mới (mục 10 A2
 WAIT_RESUMED = "Đang chờ {p} nối lại…"  # mới (9.7)
 DONE_DETAIL = "Đã kiểm tra toàn vẹn"  # mới
 CANCEL = "Hủy"
-OPEN_FOLDER = "Mở thư mục"
+OPEN_FOLDER = "Hiện trong thư mục"  # spec-f4 mục 2.4 (trước: “Mở thư mục”)
 ETA_UNKNOWN = "đang tính thời gian còn lại"  # mvp 7.3
 
 # ---- Kết quả (mvp mục 8, nguyên văn; GUI: tên lệnh trong “…”, không backtick) ----
@@ -694,7 +694,7 @@ def test_suspended_keeps_row_as_it_was(view):
 
 
 # =================================================================================================
-# Nút Hủy, Mở thư mục
+# Nút Hủy, Hiện trong thư mục
 # =================================================================================================
 
 
@@ -721,7 +721,7 @@ def test_open_folder_opens_parent_of_last_received_file(view, monkeypatch, tmp_p
     k = key("receive")
     view.handle(status_changed(k, "transferring", files=files))
     row = view.row(k)
-    assert not shown(row.open_button, view), "“Mở thư mục” ẩn tới khi nhận xong"
+    assert not shown(row.open_button, view), "“Hiện trong thư mục” ẩn tới khi nhận xong"
     view.handle(file_done(k, tmp_path / "cu" / "a.bin", 0, "a.bin"))
     view.handle(file_done(k, folder / "b (1).bin", 1, "b.bin"))
     assert not shown(row.open_button, view)
