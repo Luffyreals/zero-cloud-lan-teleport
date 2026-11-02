@@ -76,8 +76,9 @@ thì bong bóng trước, không còn thì ô nhập; tự sang danh sách khi �
 hàng máy đó. Tên trợ năng của bong bóng có tên và trạng thái bằng chữ; tooltip chỉ dựng qua
 `widgets.safe_tooltip`. Chữ của máy khác luôn qua `texts.peer_label`, vẽ/hiện dạng chữ thuần.
 
-**Nút “Chờ ghép đôi”** (`wait_button`): ẩn tới khi `set_wait_pairing_available(True)` (D3 nối
-`wait_pairing_requested`).
+**Nút “Chờ ghép đôi”** (`wait_button`): ẩn tới khi `set_wait_pairing_available(True)`;
+`ui.wait_pairing.WaitPairingController` gọi nó và nối `wait_pairing_requested` → mở trang “Chờ ghép
+đôi” (mvp mục 7.5), nên khi chạy qua `GuiApp` nút luôn hiện.
 
 Câu chữ ở ngữ cảnh `"Discover"`, gọi `QCoreApplication.translate` lúc dùng; `retranslate()` khi nhận
 `LanguageChange`.
@@ -908,7 +909,7 @@ class DiscoverPage(QWidget):
     manual_address_entered = Signal(str, int)  # ip, cổng (qua `app.devices.parse_manual_address`)
     open_device_requested = Signal(str)  # device_id của máy đã ghép đôi được bấm
     view_preference_changed = Signal(str)  # "radar" | "list", chỉ khi người dùng bấm `view_button`
-    wait_pairing_requested = Signal()  # nút “Chờ ghép đôi” (D3 nối)
+    wait_pairing_requested = Signal()  # nút “Chờ ghép đôi” (`ui.wait_pairing` nối)
 
     def __init__(self, model: DeviceListModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1046,7 +1047,7 @@ class DiscoverPage(QWidget):
         self._sync()
 
     def set_wait_pairing_available(self, available: bool) -> None:
-        """Hiện/ẩn nút “Chờ ghép đôi” (D3)."""
+        """Hiện/ẩn nút “Chờ ghép đôi” (`ui.wait_pairing` bật khi đăng ký trang)."""
         self.wait_button.setVisible(bool(available))
         self._update_tab_order()
 
