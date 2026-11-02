@@ -33,6 +33,7 @@ from teleport.core.transfer import (
     Outcome,
     RemoveTemp,
     SyncPart,
+    TombstonesChanged,
     TransferEngine,
     TransferStatus,
     check_offer,
@@ -590,13 +591,17 @@ def test_rule6_complete_of_done_transfer_resends_verified(tx):
     assert tx.sent(r.complete(1)) == [Verified(transfer_id=r.T, file_index=1)]
 
 
-def test_rule6_complete_beyond_files_of_done_transfer_is_ignored(tx):
+def test_rule6_complete_beyond_files_of_done_transfer_cancels(tx):
+    """Protocol §6.3, “Lỗi khi so với `offer`”: `file_index` không nhỏ hơn số file → `cancel{error}`
+    và bia mộ đè lên mục DONE; không có sự kiện nào (lượt đã kết thúc)."""
     r = tx.Recv(tx.entries(1, 2))
     r.accept()
     r.finish_all()
     acts = r.msg(Complete(transfer_id=r.T, file_index=5, merkle_root="ab" * 32))
-    assert tx.sent(acts) == []
+    assert tx.sent(acts) == [Cancel(transfer_id=r.T, reason="error")]
     assert tx.events(acts) == []
+    assert tx.of(acts, TombstonesChanged)  # bia mộ được ghi xuống đĩa
+    assert tx.sent(r.complete(0)) == [Cancel(transfer_id=r.T, reason="error")]
 
 
 def test_rule6_complete_of_earlier_file_of_running_transfer_resends_verified(tx):
