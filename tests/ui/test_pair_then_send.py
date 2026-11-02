@@ -681,6 +681,7 @@ def _a_sends(run, gui_wait, out: list):
     out[:] = [i for i in got[0] if str(i.key.direction) == "send"]
 
 
+@pytest.mark.demo
 @pytest.mark.integration
 def test_a_drop_on_unpaired_peer_pairs_then_sends_automatically(
     gui, gui_wait, config_dir, peer_b, fake_mdns_for_gui, tmp_path

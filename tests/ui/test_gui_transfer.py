@@ -310,6 +310,7 @@ def temp_dir(receive_dir: Path, transfer_id: str) -> Path:
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 @pytest.mark.usefixtures("offers_as_boxes")  # spec-b4 11.3: test chờ hộp hỏi nhận file
 def test_a_gui_receives_64_mib_after_accept_and_row_shows_done(
     gui, gui_wait, pair, peer, tmp_path, ui_helpers
@@ -361,6 +362,7 @@ def test_a_gui_receives_64_mib_after_accept_and_row_shows_done(
 # =================================================================================================
 
 
+@pytest.mark.demo
 @pytest.mark.usefixtures("offers_as_boxes")  # spec-b4 11.3: test chờ hộp hỏi nhận file
 def test_b_same_name_again_is_saved_numbered_and_old_file_unchanged(
     gui, gui_wait, pair, peer, tmp_path, ui_helpers
@@ -585,6 +587,7 @@ def test_e_cancel_from_either_side_is_cancelled_user_and_temp_removed(
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 @pytest.mark.usefixtures("offers_as_boxes")  # spec-b4 11.3: test chờ hộp hỏi nhận file
 def test_f_network_cut_shows_reconnecting_then_finishes_without_going_back(
     gui, gui_wait, pair, peer, tmp_path, tcp_proxy, fast_progress, ui_helpers
@@ -660,6 +663,7 @@ def test_f_network_cut_shows_reconnecting_then_finishes_without_going_back(
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 @pytest.mark.usefixtures("offers_as_boxes")  # spec-b4 11.3: test chờ hộp hỏi nhận file
 def test_g_restart_gui_mid_transfer_resumes_row_and_finishes(
     gui, gui_wait, pair, peer, tmp_path, fast_progress, ui_helpers
@@ -764,6 +768,7 @@ def notice_buttons(ctl, text: str) -> list:
     ]
 
 
+@pytest.mark.demo
 def test_i_unpaired_sender_cannot_send_no_offer_box_no_file(gui, gui_wait, pair, peer, tmp_path, ui_helpers):
     """H5: A (GUI) hủy ghép đôi B qua luồng ghép đôi của GUI; B (vẫn tin A) gửi tới A → A không hỏi,
     không có thẻ nhận, không có file (kể cả file tạm); B bị A từ chối kết nối (`ConnectFailed(REJECTED)`)."""
@@ -852,6 +857,7 @@ def setup_b_unpairs_gui(run, gui_wait, p: Peer, a_id: str, b_id: str):
     yield gui_wait(lambda: not p.connected_to(a_id), 10, "kết nối A–B bị đóng")
 
 
+@pytest.mark.demo
 def test_j_gui_sender_rejected_by_peer_shows_notice_with_repair_button(
     gui, gui_wait, pair, peer, tmp_path, ui_helpers
 ):

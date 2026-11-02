@@ -111,5 +111,6 @@ markers = [
     "gui: test tầng ui, cần PySide6 và chạy với QT_QPA_PLATFORM=offscreen",
     "real_notify_delay: không ép hằng gộp bóng thoại “Đã nhận…” của teleport.ui.notify về 0 (fixture tự động notify_immediate của tests/ui/conftest.py)",
     "mdns: mDNS thật trên 127.0.0.1 (bỏ qua bằng TELEPORT_SKIP_MDNS=1; khi chạy song song dồn vào một worker)",
+    "demo: test có sẵn chứng minh tiêu chí demo H1–H5 của docs/mvp.md mục 4.1 (bảng H → test ở docs/architecture.md mục 6); chạy pytest -m demo trước mỗi bản zip",
     "frozen: chạy bản build PyInstaller trỏ bởi TELEPORT_FROZEN_EXE (CLI) / TELEPORT_FROZEN_GUI_EXE (GUI), hoặc bộ cài trỏ bởi TELEPORT_INSTALLER_EXE; không có thì bỏ qua",
 ]

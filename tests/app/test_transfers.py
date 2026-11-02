@@ -515,6 +515,7 @@ def test_event_classes_are_frozen_dataclasses_with_planned_fields(T, cls, fields
 # =================================================================================================
 
 
+@pytest.mark.demo
 @integration
 @pytest.mark.parametrize("client", ["sender", "receiver"])
 async def test_ac1_single_file_arrives_intact_with_name_and_mtime(T, transfer_nodes, client):
@@ -608,6 +609,7 @@ async def test_ac3_64_mib_random_file_two_directions(T, transfer_nodes, client):
     await wait_done_record(net, key.transfer_id)
 
 
+@pytest.mark.demo
 @integration
 async def test_ac4_duplicate_names_never_overwrite(T, transfer_nodes):
     """AC-4: `a.txt` canh gác không đổi, file nhận thành `a (1).txt`; offer hai `x.bin` → `x.bin`,
@@ -1112,6 +1114,7 @@ async def test_ac16_control_replaced_mid_transfer_still_done(T, transfer_nodes, 
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 @integration
 @pytest.mark.parametrize("client", ["sender", "receiver"])
 async def test_ac17_control_lost_mid_transfer_reconnects_and_finishes(T, transfer_nodes, write_spy, client):

@@ -44,6 +44,7 @@ def opts(n: int) -> MdnsOptions:
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 async def test_m1_two_unpaired_nodes_see_each_other(node_factory):
     A = await node_factory("A", mdns=opts(11))
     B = await node_factory("B", mdns=opts(12))
