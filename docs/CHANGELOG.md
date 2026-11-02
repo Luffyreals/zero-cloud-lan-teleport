@@ -244,6 +244,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 - Đóng `Node` khi đĩa chậm (quá hạn chờ dọn đĩa), hoặc hủy khởi động lúc đang mở lại một lượt dở, không còn giữ file `.part` / `.state` và thư mục nhận mở tới khi tiến trình thoát: việc đĩa đang chạy được làm nốt rồi thư mục nhận mới đóng. Trước đây, mở lại node trong cùng tiến trình trên Windows có thể làm lượt nối lại hỏng vì `PermissionError`.
 - `tombstones.json` ghi lỗi (ví dụ ổ đầy tạm thời) không còn làm mất lý do hủy của lượt đã hủy: lúc đóng Teleport ghi lại một lần.
 - Đồng bộ clipboard: máy kia mất kết nối đúng lúc đang đọc clipboard thì sau khi nối lại, sao chép lại cùng nội dung vẫn được gửi.
+- CLI: `listen` / `pair` khi đầu vào đã đóng (chạy trong script, `< /dev/null`) báo rõ là đã tự từ chối ghép đôi vì không đọc được câu trả lời.
 - Bản zip: hướng dẫn `DOC-TRUOC.txt` khớp giao diện hiện tại (dòng “Lưu vào”, nút “Đổi…”, nút “Hiện trong thư mục”); bộ cài Windows ghi đúng chủ bản quyền.
 
 ### Security

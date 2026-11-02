@@ -1297,6 +1297,37 @@ async def test_cl21_list_reinstall_hint(tmp_path, cli_mdns):
     assert "*" not in out
 
 
+async def test_list_shows_invisible_name_chars_as_dots(tmp_path, cli_mdns):
+    """Tên máy có ký tự trông như khoảng trắng (U+3164) hiện thành `·` ở `list`, như ở `listen`
+    (mvp mục 7.2); JSON giữ tên gốc."""
+    d = tmp_path / "cfg"
+    load_or_create_identity(d)
+    peer = load_or_create_identity(tmp_path / "la")
+    name = "PC-Nhaㅤ"
+    cli_mdns.seed = {peer.device_id: discovered(peer.device_id, name, 47474, addresses=("192.0.2.30",))}
+    code, out, err = await run_list_capture(list_argv(d))
+    assert code == 0, err
+    assert f"  PC-Nha·  {peer.device_id[:8]}  " in out, out
+    assert "ㅤ" not in out
+    code, out, err = await run_list_capture(list_argv(d, "--json"))
+    assert code == 0, err
+    assert [x["name"] for x in json.loads(out)["devices"]] == [name]
+
+
+def test_unpair_shows_invisible_name_chars_as_dots(tmp_path, capsys):
+    d = tmp_path / "cfg"
+    load_or_create_identity(d)
+    peer = load_or_create_identity(tmp_path / "la")
+    TrustStore.load(d).add(peer_cert_from_pem(peer.cert_pem()), "PC-Nhaㅤ")
+    assert run_main(["--config-dir", str(d), "unpair", "khong-co"]) == 1
+    err = capsys.readouterr().err
+    assert f"  {peer.device_id[:8]}  PC-Nha·" in err.splitlines(), err
+    assert run_main(["--config-dir", str(d), "unpair", peer.device_id[:8]]) == 0
+    out = capsys.readouterr().out
+    assert f"Đã hủy ghép đôi với PC-Nha· ({peer.device_id[:8]})." in out, out
+    assert "ㅤ" not in out
+
+
 async def test_cl21_no_reinstall_hint_when_paired_device_is_online(tmp_path, cli_mdns):
     d = tmp_path / "cfg"
     load_or_create_identity(d)
@@ -2227,6 +2258,34 @@ async def test_pair_question_is_not_reprinted_after_answer_or_cancel(listening, 
     assert value.endswith(INTERJECT_AFTER + "\n"), value
 
 
+MVP_PAIR_STDIN_CLOSED = "Không đọc được câu trả lời (đầu vào đã đóng) nên đã từ chối ghép đôi."
+
+
+@pytest.mark.parametrize("listening", [True, False], ids=["listen", "pair"])
+async def test_pair_stdin_closed_says_why_once(listening):
+    """stdin đóng lúc đang hỏi → từ chối và in lý do (mvp mục 8); lời hỏi tới sau khi đóng cũng bị
+    từ chối, nhưng câu báo chỉ in một lần."""
+    p, _, out, _ = _text_prompter(listening=listening)
+    role = "responder" if listening else "initiator"
+    p.on_prompt(_prompt(role, 0))
+    p.feed(time.perf_counter(), None)
+    assert p.node.decided == [(7, False)]
+    assert MVP_PAIR_STDIN_CLOSED in out.getvalue().splitlines(), out.getvalue()
+    p.on_prompt(_prompt(role, 0))
+    assert p.node.decided == [(7, False), (7, False)]
+    assert out.getvalue().count(MVP_PAIR_STDIN_CLOSED) == 1, out.getvalue()
+
+
+async def test_pair_stdin_closed_before_prompt_says_why():
+    """`listen < /dev/null`: đầu vào đóng trước khi có lời hỏi → lời hỏi đầu tiên bị từ chối kèm lý do."""
+    p, _, out, _ = _text_prompter(listening=True)
+    p.feed(time.perf_counter(), None)
+    assert MVP_PAIR_STDIN_CLOSED not in out.getvalue()
+    p.on_prompt(_prompt("responder", 0))
+    assert p.node.decided == [(7, False)]
+    assert out.getvalue().count(MVP_PAIR_STDIN_CLOSED) == 1, out.getvalue()
+
+
 @pytest.mark.parametrize("role", ["responder", "initiator"])
 def test_outcome_message_prompt_failed(role):
     from teleport.app.pairing import PairingFinished, PairingOutcome
@@ -3132,6 +3191,17 @@ def test_m5_paired_message_without_device_uses_peer_name():
     from teleport.cli import outcome_message
 
     assert outcome_message(_finished("initiator", "paired", code_shown=True)) == ["Đã ghép đôi với A."]
+
+
+def test_outcome_message_shows_peer_name_through_display_name():
+    """Tên do máy kia gửi trong câu kết quả ghép đôi cũng qua `_name_label`, như ở `list`."""
+    from teleport.cli import outcome_message
+
+    sneaky = "PC-Nhaㅤ"
+    paired = _finished("initiator", "paired", code_shown=True, device=_trusted(sneaky))
+    assert outcome_message(paired) == ["Đã ghép đôi với PC-Nha·."]
+    not_done = _finished("responder", "user_rejected", code_shown=True, peer_name=sneaky)
+    assert "PC-Nha·" in outcome_message(not_done)[0]
 
 
 @with_marks(socket_test)
