@@ -5,7 +5,9 @@ Mô hình (docs/architecture.md mục 2): Qt ở thread chính; node chạy tron
 `Node` được dựng và dùng **chỉ** trong thread node. Thread Qt chỉ chạm tới node qua
 `NodeHost.call` / `NodeHost.submit`: hàm được đưa sang loop bằng `call_soon_threadsafe`, nên
 không bao giờ chạy lồng trong một lượt xử lý action list của `TransferEngine` (bẫy `_deferred`).
-Mọi phương thức công khai của `NodeHost` `assert` đang ở thread đã dựng nó (thread Qt).
+Mọi phương thức công khai dành cho thread Qt của `NodeHost` đều `assert` đang ở thread đã dựng nó
+(thread Qt). Có ba ngoại lệ: `apply_pairing_policy` và `set_wait_pairing_open` chỉ gọi trên thread
+node, bên trong `call` (xem đoạn Luật nhận yêu cầu ghép đôi); `options` là bất biến.
 
 Chiều ngược lại: callback của node (`on_event`, `on_transfer_event`, `on_pairing_prompt`,
 `on_pairing_finished`, `on_clipboard_event`) chạy trên loop, chỉ chuyển sự kiện về thread Qt và không
