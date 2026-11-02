@@ -44,11 +44,19 @@ hoạt ảnh. Mọi bong bóng cùng cỡ (`bubble_size`), không theo tên; tí
 Nền canvas: hai elip tĩnh ở vòng trong và vòng ngoài, nét 1 px `border`.
 
 **Vòng sóng** (trang trí): ba elip nở từ viền tâm ra vòng ngoài, lệch pha 1/3, nét 2 px
-`accent_strong`, alpha 0,45 → 0. Một `QVariantAnimation` dài `WAVE_TOTAL_MS` (đọc lại mỗi lần chạy,
-cùng `WAVE_CYCLE_MS`), tự dừng (mvp N3, WCAG 2.2.2). Chạy lại khi trang hiện, cửa sổ thôi thu nhỏ, danh
+`accent_strong`, alpha 0,45 → 0. Mỗi `start_waves()` tạo một `motion.Loop` mới chạy một vòng 0→1 trên
+toàn bộ thời gian, tổng ≤ min(`WAVE_TOTAL_MS`, `motion.MAX_LOOP_MS`) (đọc lại mỗi lần chạy, cùng
+`WAVE_CYCLE_MS`; số chu kỳ vẽ = tổng đã kẹp / `WAVE_CYCLE_MS`), tự dừng (mvp N3, WCAG 2.2.2); Loop cũ
+bị dừng và `deleteLater`. `on_step` lưu giá trị rồi `update()`, `paintEvent` đọc giá trị đã lưu. Vì qua
+`Loop`: theo cổng `motion.should_animate()`, nằm trong sổ đăng ký (`running_count`, `finish_all` dừng
+được), không chạy khi canvas ẩn hay cửa sổ thu nhỏ. Chạy lại khi trang hiện, cửa sổ thôi thu nhỏ, danh
 sách từ rỗng thành có hay ngược lại; dừng ngay khi trang ẩn (kể cả xuống khay), cửa sổ thu nhỏ (event
-filter trên `window()` cài ở lần hiện đầu, bắt `WindowStateChange`), đang ở dạng danh sách; không chạy
-khi `motion.animations_enabled()` là False (đọc mỗi lần chạy).
+filter trên `window()` cài ở lần hiện đầu, bắt `WindowStateChange`), đang ở dạng danh sách.
+
+**Minh họa dạng danh sách rỗng** (`empty_illustration`, `illustrations.Scene.NO_DEVICES`, trang trí,
+không vào chuỗi Tab): con của `list_view.viewport()`, căn giữa viewport (đặt lại khi viewport đổi cỡ),
+hiện khi 0 máy **và** đang ở dạng danh sách (dạng radar thì radar trống đã là minh họa). Câu
+`empty_label` dưới khung giữ nguyên.
 
 **Ô “Nhập IP…”** (`_AddressField`, trong `PageHeader`): Esc khi ô **có chữ**: ô nhận `ShortcutOverride`
 (nên `_back_action` của cửa sổ không chạy) rồi `keyPressEvent` xóa chữ, kéo theo ẩn lỗi địa chỉ. Ô
@@ -68,8 +76,9 @@ lúc gọi; mốc ghi sau khi phát). Chưa ghép đôi và đang trong mạng �
 
 **Bàn phím và trình đọc màn hình** (mvp N12): Tab đi “Quay lại” → ô nhập → “Ghép đôi” → thanh thông
 báo (khi hiện) → câu gợi ý → `view_button` / `wait_button` (khi hiện) → từng bong bóng theo thứ tự
-`discover_devices` (radar) hoặc danh sách → câu “chưa thấy máy” (khi hiện); đặt lại sau mỗi lần đồng
-bộ. Trên bong bóng: Trái/Lên, Phải/Xuống sang bong bóng trước/sau (không vòng), Home/End về đầu/cuối.
+`discover_devices` (radar) hoặc danh sách → câu “chưa thấy máy” (khi hiện; minh họa không nhận tiêu
+điểm); đặt lại sau mỗi lần đồng bộ. Trên bong bóng: Trái/Lên, Phải/Xuống sang bong bóng trước/sau
+(không vòng), Home/End về đầu/cuối.
 Tiêu điểm khi mở trang (`setFocusProxy`): bong bóng chưa ghép đôi đầu tiên; dạng danh sách có hàng →
 danh sách; còn lại ô nhập. Bong bóng đang có tiêu điểm bị bỏ → tiêu điểm sang bong bóng kế, không có
 thì bong bóng trước, không còn thì ô nhập; tự sang danh sách khi đang ở một bong bóng → danh sách, đúng
@@ -94,10 +103,8 @@ import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
-from typing import Any
 
 from PySide6.QtCore import (
-    QAbstractAnimation,
     QCoreApplication,
     QEvent,
     QItemSelectionModel,
@@ -111,7 +118,6 @@ from PySide6.QtCore import (
     QSortFilterProxyModel,
     Qt,
     QTimer,
-    QVariantAnimation,
     Signal,
 )
 from PySide6.QtGui import (
@@ -145,6 +151,7 @@ from shiboken6 import isValid
 
 from teleport.app.devices import DeviceView, parse_manual_address
 from teleport.ui import motion, texts, theme
+from teleport.ui.illustrations import Illustration, Scene, can_run
 from teleport.ui.radar import (
     DEVICE_ID_ROLE,
     DEVICE_ROLE,
@@ -574,11 +581,8 @@ class RadarCanvas(QWidget):
         self._slots: dict[str, Slot] = {}  # chỗ cũ, giữ cả khi đang ở dạng danh sách
         self._slot_paired: dict[str, bool] = {}  # trạng thái ghép đôi lúc nhận chỗ đó
         self._count = 0
-        self._wave = QVariantAnimation(self)
-        self._wave.setStartValue(0.0)
-        self._wave.setEndValue(1.0)
-        self._wave.valueChanged.connect(self._on_wave_step)
-        self._wave.finished.connect(self.update)
+        self._wave_loop: motion.Loop | None = None  # tạo mới mỗi lần `start_waves()`
+        self._wave_value = 0.0  # giá trị 0→1 mới nhất của vòng sóng
         self._wave_cycles = WAVE_TOTAL_MS / WAVE_CYCLE_MS
         self.retranslate()
 
@@ -679,25 +683,30 @@ class RadarCanvas(QWidget):
 
     @property
     def wave_running(self) -> bool:
-        return self._wave.state() == QAbstractAnimation.State.Running
+        loop = self._wave_loop
+        return loop is not None and isValid(loop) and loop.running
 
     def start_waves(self) -> None:
-        """Chạy vòng sóng một lần (≤ `WAVE_TOTAL_MS`); đang chạy thì thôi; hiệu ứng HĐH tắt thì không chạy."""
-        if not motion.animations_enabled():
-            self.stop_waves()
+        """Chạy vòng sóng một lần (≤ min(`WAVE_TOTAL_MS`, `MAX_LOOP_MS`)) qua một `motion.Loop` mới;
+        đang chạy thì thôi; không được hoạt ảnh, canvas ẩn hay cửa sổ thu nhỏ thì không chạy."""
+        if self.wave_running or not can_run(self):
             return
-        if self.wave_running:
-            return
+        old = self._wave_loop
+        if old is not None and isValid(old):
+            old.stop()
+            old.deleteLater()
         cycle = max(1, int(WAVE_CYCLE_MS))
         total = max(1, int(WAVE_TOTAL_MS))
-        self._wave_cycles = total / cycle
-        self._wave.setDuration(total)
-        self._wave.start()
+        self._wave_cycles = min(total, motion.MAX_LOOP_MS) / cycle
+        self._wave_value = 0.0
+        loop = motion.Loop(self, total, self._on_wave_step, max_ms=total, on_stop=self.update)
+        self._wave_loop = loop
+        loop.start()
 
     def stop_waves(self) -> None:
-        if self._wave.state() != QAbstractAnimation.State.Stopped:
-            self._wave.stop()
-            self.update()
+        loop = self._wave_loop
+        if loop is not None and isValid(loop) and loop.running:
+            loop.stop()  # `on_stop` vẽ lại canvas không sóng
 
     def retranslate(self) -> None:
         t = QCoreApplication.translate
@@ -754,7 +763,8 @@ class RadarCanvas(QWidget):
         bubble.setParent(None)  # ra khỏi `findChildren` ngay, không đợi `deleteLater`
         bubble.deleteLater()
 
-    def _on_wave_step(self, _value: Any) -> None:
+    def _on_wave_step(self, value: float) -> None:
+        self._wave_value = value
         self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -772,8 +782,7 @@ class RadarCanvas(QWidget):
                 fraction = RING_FRACTIONS[ring]
                 painter.drawEllipse(center, fraction * rx, fraction * ry)
             if self.wave_running:
-                value = self._wave.currentValue()
-                elapsed = (float(value) if isinstance(value, (int, float)) else 0.0) * self._wave_cycles
+                elapsed = self._wave_value * self._wave_cycles
                 # Sóng cùng dạng với các vòng: bắt đầu từ elip nhỏ nhất bao trọn tâm, nở ra vòng ngoài.
                 core = self.core_rect()
                 start = min(1.0, max(core.width() / 2 / rx, core.height() / 2 / ry))
@@ -974,6 +983,11 @@ class DiscoverPage(QWidget):
         self.stack.addWidget(self.canvas)
         self.stack.addWidget(self.list_view)
         self.stack.installEventFilter(self)
+        # Trang trí của dạng danh sách rỗng: nằm trong viewport (không chạm layout), không nhận Tab.
+        self._list_viewport = self.list_view.viewport()
+        self.empty_illustration = Illustration(Scene.NO_DEVICES, self._list_viewport)
+        self.empty_illustration.setVisible(False)
+        self._list_viewport.installEventFilter(self)
 
         self.empty_label = _plain_label("discoverEmpty", self)
         self.empty_label.setProperty(theme.TONE_PROPERTY, "muted")
@@ -1158,6 +1172,8 @@ class DiscoverPage(QWidget):
             self._ensure_list_current()
         self.canvas.set_count(count)
         self.empty_label.setVisible(count == 0)
+        self._place_empty_illustration()
+        self.empty_illustration.setVisible(count == 0 and mode is ViewMode.LIST)
         self._update_mode_widgets()
         self._update_tab_order()
         self._update_focus_proxy()
@@ -1281,6 +1297,15 @@ class DiscoverPage(QWidget):
         if self.info_bar.level is InfoLevel.ERROR:
             self.info_bar.clear()
 
+    def _place_empty_illustration(self) -> None:
+        """Căn giữa minh họa dạng danh sách rỗng trong viewport của danh sách."""
+        area = self._list_viewport.rect()
+        size = self.empty_illustration.size()
+        self.empty_illustration.move(
+            area.x() + max(0, (area.width() - size.width()) // 2),
+            area.y() + max(0, (area.height() - size.height()) // 2),
+        )
+
     # ---- Vòng sóng, hiện/ẩn --------------------------------------------------------------------
 
     def _window_minimized(self) -> bool:
@@ -1320,6 +1345,8 @@ class DiscoverPage(QWidget):
         if watched is self.stack and event.type() == QEvent.Type.Resize:
             self._sized = True
             self._sync()
+        elif watched is self.__dict__.get("_list_viewport") and event.type() == QEvent.Type.Resize:
+            self._place_empty_illustration()
         elif watched is self._watched_window and event.type() == QEvent.Type.WindowStateChange:
             self._on_window_state(event)
         return False

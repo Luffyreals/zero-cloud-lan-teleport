@@ -671,6 +671,39 @@ def test_v6_empty_state_is_built_once(h, qtbot):
     assert empty_state_of(v) is es
 
 
+def test_v6_empty_state_shows_no_transfers_illustration(h, qtbot):
+    """Spec G6 tiêu chí 8 (mục 7): luồng rỗng (`chatEmpty`) có minh họa NO_TRANSFERS thay vòng icon."""
+    from teleport.ui.illustrations import Scene
+
+    v = h.view
+    open_and_load(v, qtbot, PEER_ID)
+    es = empty_state_of(v)
+    assert es.objectName() == "chatEmpty"
+    assert es.illustration.isVisibleTo(v)
+    assert es.illustration.scene is Scene.NO_TRANSFERS
+    assert not es.icon_badge.isVisibleTo(v)
+
+
+def test_v6_empty_illustration_does_not_replay_when_switching_device(h, qtbot, real_motion, monkeypatch):
+    """Spec G6 mục 7: đổi máy (cùng cảnh NO_TRANSFERS) không chạy lại minh họa."""
+    from teleport.ui import illustrations
+
+    monkeypatch.setattr(illustrations, "PLAY_MS", 1500)
+    v = h.view
+    ill = empty_state_of(v).illustration
+    open_and_load(v, qtbot, PEER_ID)
+    qtbot.waitUntil(lambda: ill.playing, timeout=1000)  # đối chứng: lần hiện đầu có chạy
+    qtbot.waitUntil(lambda: not ill.playing, timeout=5000)
+    assert ill.progress == 1.0
+    open_and_load(v, qtbot, OTHER_ID)
+    assert empty_state_of(v).illustration is ill
+    assert ill.isVisibleTo(v)
+    QApplication.processEvents()
+    qtbot.wait(50)
+    assert not ill.playing
+    assert ill.progress == 1.0
+
+
 def test_v7_drop_on_empty_state_sends_files(h, qtbot, tmp_path):
     v = h.view
     open_and_load(v, qtbot, PEER_ID)

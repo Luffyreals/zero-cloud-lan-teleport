@@ -1836,11 +1836,15 @@ def test_three_hundred_devices_use_list_without_bubble_widgets(ui):
 
 
 @pytest.fixture
-def waves(monkeypatch):
+def waves(real_motion, monkeypatch):
+    """Vòng sóng chạy thật qua `motion.Loop` (spec G6 mục 6 A1, A2): `real_motion`, vá lại
+    `animations_enabled` theo `state["enabled"]`, và nới `motion.MAX_LOOP_MS` lên 60 s để tổng 30 s của
+    test không bị trần 5 s cắt (tổng thật ≤ `MAX_LOOP_MS` kiểm ở `test_illustrations.py`)."""
     from teleport.ui import discover, motion
 
     state = {"enabled": True}
     monkeypatch.setattr(motion, "animations_enabled", lambda: state["enabled"])
+    monkeypatch.setattr(motion, "MAX_LOOP_MS", 60_000)
     monkeypatch.setattr(discover, "WAVE_CYCLE_MS", 400)
     monkeypatch.setattr(discover, "WAVE_TOTAL_MS", 30_000)
 
@@ -1920,6 +1924,65 @@ def test_start_and_stop_waves_are_idempotent(ui, waves):
     assert not canvas.wave_running
 
 
+def test_waves_run_through_motion_loop_registry(ui, waves):
+    """Spec G6 tiêu chí 9: sóng là một `Loop` trong sổ đăng ký của `motion`."""
+    from teleport.ui import motion
+
+    canvas = ui.page.canvas
+    canvas.start_waves()
+    assert canvas.wave_running
+    assert motion.running_count() >= 1
+
+
+def test_finish_all_stops_waves(ui, waves):
+    from teleport.ui import motion
+
+    canvas = ui.page.canvas
+    canvas.start_waves()
+    assert canvas.wave_running
+    motion.finish_all()
+    assert not canvas.wave_running
+
+
+def test_waves_do_not_run_in_instant_mode(ui, waves):
+    """`Loop` theo `should_animate()`: chế độ tức thì của test (không chỉ `animations_enabled`)."""
+    from teleport.ui import motion
+
+    assert waves.state["enabled"]
+    motion._force_instant(True)
+    canvas = ui.page.canvas
+    canvas.start_waves()
+    assert not canvas.wave_running
+
+
+@pytest.mark.parametrize("how", ["page_hidden", "list_view"])
+def test_start_waves_while_canvas_hidden_does_not_run(ui, waves, how):
+    """Spec G6 A3: `start_waves()` khi canvas không hiện thì không chạy."""
+    page = ui.page
+    canvas = page.canvas
+    canvas.stop_waves()
+    if how == "page_hidden":
+        page.hide()
+    else:
+        page.set_view_preference("list")
+    settle(ui.qtbot)
+    assert not canvas.isVisible(), "tiền đề: canvas đang ẩn"
+    canvas.start_waves()
+    assert not canvas.wave_running
+
+
+def test_wave_restart_creates_fresh_run_with_new_total(ui, waves, qtbot):
+    """Mục 6 A1: mỗi `start_waves()` đọc lại `WAVE_TOTAL_MS`: vòng cũ dài dừng, vòng mới ngắn tự hết."""
+    canvas = ui.page.canvas
+    canvas.start_waves()
+    assert canvas.wave_running
+    canvas.stop_waves()
+    waves.set_total(40, 120)
+    canvas.start_waves()
+    assert canvas.wave_running
+    qtbot.waitUntil(lambda: not canvas.wave_running, timeout=3000)
+
+
 def test_hidden_page_clears_info_bar(win, qtbot):
     """M9: trang bị ẩn không tự phát → `info_bar.clear()`."""
     open_discover(qtbot, win)
@@ -1940,16 +2003,82 @@ def test_notice_while_page_hidden_is_not_shown_on_open(win, qtbot):
     assert win.discover.info_bar.isHidden()
 
 
-def test_maximize_does_not_restart_waves(win, qtbot, monkeypatch):
-    """Sóng chỉ chạy lại khi cửa sổ thôi thu nhỏ, không khi phóng to."""
-    from teleport.ui import motion
-
-    monkeypatch.setattr(motion, "animations_enabled", lambda: True)
+def test_maximize_does_not_restart_waves(win, qtbot, real_motion):
+    """Sóng chỉ chạy lại khi cửa sổ thôi thu nhỏ, không khi phóng to (spec G6 mục 7: `real_motion`, sóng
+    chạy thật sau khi mở rồi mới dừng)."""
     open_discover(qtbot, win)
+    qtbot.waitUntil(lambda: win.discover.canvas.wave_running, timeout=2000)
     win.discover.canvas.stop_waves()
+    assert not win.discover.canvas.wave_running
     win.setWindowState(Qt.WindowState.WindowMaximized)
     settle(qtbot)
     assert not win.discover.canvas.wave_running
+
+
+# =================================================================================================
+# Minh họa dạng danh sách rỗng (spec G6 mục 3, mục 6 A6; tiêu chí 6, 8)
+# =================================================================================================
+
+
+def test_empty_illustration_is_no_devices_in_list_viewport(ui):
+    from teleport.ui.illustrations import Illustration, Scene
+
+    page = ui.page
+    ill = page.empty_illustration
+    assert isinstance(ill, Illustration)
+    assert ill.scene is Scene.NO_DEVICES
+    assert ill.parent() is page.list_view.viewport()
+    assert ill.focusPolicy() == Qt.FocusPolicy.NoFocus
+    assert ill.accessibleName() == ""
+
+
+def test_empty_illustration_only_in_list_view_with_no_device(ui):
+    from teleport.ui.discover import ViewMode
+
+    page = ui.page
+    ui.load([])
+    assert page.view_mode is ViewMode.RADAR
+    assert not page.empty_illustration.isVisibleTo(page), "radar trống đã là minh họa"
+    page.set_view_preference("list")
+    settle(ui.qtbot)
+    assert page.view_mode is ViewMode.LIST
+    assert page.empty_illustration.isVisibleTo(page)
+    assert page.empty_label.isVisibleTo(page), "empty_label giữ nguyên"
+    ui.load([view("May-1")])
+    assert not page.empty_illustration.isVisibleTo(page)
+    ui.load([])
+    assert page.empty_illustration.isVisibleTo(page)
+    page.set_view_preference("radar")
+    settle(ui.qtbot)
+    assert not page.empty_illustration.isVisibleTo(page)
+
+
+def test_empty_illustration_centered_in_viewport_after_resize(ui):
+    page = ui.page
+    page.set_view_preference("list")
+    ui.load([])
+    viewport = page.list_view.viewport()
+    for width, height in ((980, 660), (760, 520), (1200, 800)):
+        page.resize(width, height)
+        settle(ui.qtbot)
+        g = page.empty_illustration.geometry()
+        assert viewport.rect().contains(g), (g, viewport.rect())
+        assert abs(g.center().x() - viewport.width() / 2) <= 2, (
+            f"{width}x{height}: {g} trong {viewport.size()}"
+        )
+
+
+def test_empty_illustration_not_in_tab_chain(ui):
+    page = ui.page
+    page.set_view_preference("list")
+    page.set_wait_pairing_available(True)
+    ui.load([])
+    activate(ui.qtbot, page)
+    assert page.empty_illustration.isVisibleTo(page)
+    page.address_edit.setFocus(Qt.FocusReason.TabFocusReason)
+    seen = press_tab(12)
+    assert page.empty_illustration not in seen
+    assert page.empty_label in seen, "đối chứng: Tab vẫn tới empty_label"
 
 
 # =================================================================================================

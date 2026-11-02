@@ -1455,14 +1455,123 @@ def test_empty_state_icon_uses_24_when_available(qtbot, icon_calls):
     from teleport.ui import icons
     from teleport.ui.widgets import EmptyState
 
-    assert 24 in icons.SIZES["shield_checkmark"] and 24 not in icons.SIZES["search"]
-    for name, size in (("shield_checkmark", 24), ("search", 20)):
+    # Spec G6 A4 + mục 7: `shield_checkmark` nay có minh họa (không vẽ icon), dùng `laptop` (có cỡ 24,
+    # không thuộc cảnh nào).
+    assert 24 in icons.SIZES["laptop"] and 24 not in icons.SIZES["search"]
+    for name, size in (("laptop", 24), ("search", 20)):
         es = EmptyState()
         es.set_content(name, "Tiêu đề")
         _show(qtbot, es, 400, 300)
         es.grab()
         sizes = {s for n, s in icon_calls if n == name}
         assert sizes == {size}, f"{name}: cỡ {sizes}, spec {size}"
+
+
+# -------------------------------------------------------------------------------------------------
+# EmptyState có minh họa (spec G6 mục 3, tiêu chí 6, 7; mục 7)
+# -------------------------------------------------------------------------------------------------
+
+SCENE_ICONS = (("arrow_swap", "NOT_PAIRED"), ("shield_checkmark", "NOT_PAIRED"), ("attach", "NO_TRANSFERS"))
+
+
+def _scene_empty_state(qtbot, icon: str = "arrow_swap", *, action: str | None = "Tìm máy mới"):
+    from teleport.ui.widgets import EmptyState
+
+    es = EmptyState()
+    es.set_content(icon, "Chưa ghép đôi máy nào", "Mở Teleport trên máy kia rồi bấm Tìm.", action=action)
+    return _show(qtbot, es, 800, 600)
+
+
+def test_empty_state_illustration_hidden_by_default(qtbot):
+    from teleport.ui.illustrations import Illustration
+    from teleport.ui.widgets import EmptyState
+
+    es = EmptyState()
+    _show(qtbot, es, 400, 300)
+    assert isinstance(es.illustration, Illustration)
+    assert not es.illustration.isVisibleTo(es)
+
+
+@pytest.mark.parametrize(("icon", "scene"), SCENE_ICONS)
+def test_empty_state_icon_with_scene_shows_illustration_instead_of_badge(qtbot, icon, scene):
+    from teleport.ui.illustrations import Scene
+
+    es = _scene_empty_state(qtbot, icon)
+    assert es.illustration.isVisibleTo(es)
+    assert es.illustration.scene is Scene[scene]
+    assert not es.icon_badge.isVisibleTo(es)
+
+
+def test_empty_state_icon_without_scene_keeps_badge(qtbot):
+    es = _empty_state(qtbot)  # icon `search`: không có cảnh
+    assert es.icon_badge.isVisibleTo(es)
+    assert not es.illustration.isVisibleTo(es)
+
+
+def test_empty_state_switches_between_scene_and_badge(qtbot):
+    from teleport.ui.illustrations import Scene
+
+    es = _scene_empty_state(qtbot, "attach")
+    es.set_content("search", "Không thấy")
+    assert es.icon_badge.isVisibleTo(es) and not es.illustration.isVisibleTo(es)
+    es.set_content("shield_checkmark", "Chưa ghép đôi")
+    assert es.illustration.isVisibleTo(es) and not es.icon_badge.isVisibleTo(es)
+    assert es.illustration.scene is Scene.NOT_PAIRED
+
+
+def test_empty_state_with_scene_block_is_centered(qtbot):
+    es = _scene_empty_state(qtbot)
+    parts = [es.illustration, es.title_label, es.text_label, es.action_button]
+    block = QRect()
+    for w in parts:
+        block = block.united(_geom_in(w, es))
+    center = block.center()
+    assert abs(center.x() - es.width() / 2) <= 2, f"lệch ngang: khối {block} trong {es.size()}"
+    assert abs(center.y() - es.height() / 2) <= 2, f"lệch dọc: khối {block} trong {es.size()}"
+    ill = _geom_in(es.illustration, es)
+    assert abs(ill.center().x() - es.width() / 2) <= 2, f"minh họa lệch ngang: {ill}"
+    assert block.width() <= 360
+
+
+def test_empty_state_with_scene_keeps_16_px_to_title(qtbot):
+    es = _scene_empty_state(qtbot)
+    ill, title = _geom_in(es.illustration, es), _geom_in(es.title_label, es)
+    text, button = _geom_in(es.text_label, es), _geom_in(es.action_button, es)
+    assert title.top() - ill.bottom() - 1 == 16
+    assert text.top() - title.bottom() - 1 == 8
+    assert button.top() - text.bottom() - 1 == 16
+
+
+def test_empty_state_illustration_is_not_in_tab_chain(qtbot):
+    from teleport.ui.widgets import EmptyState
+
+    host = QWidget()
+    layout = QVBoxLayout(host)
+    before = QPushButton("trước", host)
+    es = EmptyState(host)
+    es.set_content("arrow_swap", "Chưa ghép đôi máy nào", "Mở Teleport trên máy kia.", action="Tìm máy mới")
+    after = QPushButton("sau", host)
+    for w in (before, es, after):
+        layout.addWidget(w)
+    _show(qtbot, host, 800, 600)
+    _activate(qtbot, host)
+    assert es.illustration.isVisibleTo(host)
+    assert es.illustration.focusPolicy() == Qt.FocusPolicy.NoFocus
+    before.setFocus(Qt.FocusReason.TabFocusReason)
+    seen = []
+    for _ in range(8):
+        QTest.keyClick(QApplication.focusWidget(), Qt.Key.Key_Tab)
+        seen.append(QApplication.focusWidget())
+    assert es.illustration not in seen
+    assert es.action_button in seen, "đối chứng: Tab vẫn vào nút của EmptyState"
+    assert es.focus_target() is es.action_button
+
+
+def test_empty_state_with_scene_has_no_extra_accessible_text(qtbot):
+    es = _scene_empty_state(qtbot)
+    assert es.accessibleName() == "Chưa ghép đôi máy nào"
+    assert es.illustration.accessibleName() == ""
+    assert es.illustration.accessibleDescription() == ""
 
 
 # =================================================================================================

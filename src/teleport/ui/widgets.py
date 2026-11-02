@@ -42,8 +42,10 @@ Chỉ có những gì các màn dùng tới. Không có `Card` (đã có `QFrame
   Alert (cố gắng tốt nhất: có HĐH không chuyển tới trình đọc màn hình). Chữ là `texts.Text`: đổi
   ngôn ngữ thì câu dựng bằng hàm được dịch lại, câu là chuỗi dịch sẵn bị ẩn (trừ khi bên gọi đã hiện
   lại nó bằng ngôn ngữ mới trước khi thanh nhận `LanguageChange`).
-- `EmptyState`: vòng tròn 56 px nền `accent_subtle`, icon `accent_text`; tiêu đề SECTION (font điểm
-  nhấn), mô tả `tone=muted`, nút chính (`PRIMARY_PROPERTY`). Khối rộng tối đa 360 px, căn giữa.
+- `EmptyState`: vòng tròn 56 px nền `accent_subtle`, icon `accent_text`; icon có cảnh
+  (`illustrations.scene_for_icon`) thì thay vòng tròn bằng `illustration` (`illustrations.Illustration`,
+  trang trí, cùng cột, cùng khoảng cách tới tiêu đề); tiêu đề SECTION (font điểm nhấn), mô tả
+  `tone=muted`, nút chính (`PRIMARY_PROPERTY`). Khối rộng tối đa 360 px, căn giữa.
 - `PageHeader`: nút “Quay lại” (có chữ, tooltip kèm Esc), tiêu đề SECTION, đường kẻ dưới 1 px
   `border`. Phím Esc do cửa sổ chính bắt (`main_window`), không nằm ở đây.
 - `ToggleSwitch` (spec D2 mục 1.5): `QAbstractButton` checkable, `StrongFocus`, rãnh 40×20 tự vẽ và chữ
@@ -115,6 +117,7 @@ from PySide6.QtWidgets import (
 )
 
 from teleport.ui import i18n, icons, texts, theme
+from teleport.ui.illustrations import Illustration, scene_for_icon
 from teleport.ui.texts import Text
 from teleport.ui.theme import Tokens
 
@@ -934,6 +937,8 @@ class EmptyState(QWidget):
         self.content.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         self.icon_badge = _IconBadge(self.content)
+        self.illustration = Illustration(parent=self.content)  # trang trí, ẩn tới khi icon có cảnh
+        self.illustration.setVisible(False)
         self.title_label = _plain_label(self.content)
         self.title_label.setFont(theme.font_for(theme.TextStyle.SECTION, self.title_label.font()))
         self.text_label = _plain_label(self.content)
@@ -951,6 +956,7 @@ class EmptyState(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
         column.addWidget(self.icon_badge, 0, Qt.AlignmentFlag.AlignHCenter)
+        column.addWidget(self.illustration, 0, Qt.AlignmentFlag.AlignHCenter)  # chỉ một trong hai hiện
         column.addSpacing(theme.SPACING[3])
         column.addWidget(self.title_label)
         column.addSpacing(theme.SPACING[1])
@@ -974,10 +980,17 @@ class EmptyState(QWidget):
         self.setFocusProxy(self.focus_target())
 
     def set_content(self, icon_name: str, title: str, text: str = "", *, action: str | None = None) -> None:
-        """Đặt nội dung; `action` là chữ của nút chính (None: không có nút); icon lạ → KeyError."""
+        """Đặt nội dung; `action` là chữ của nút chính (None: không có nút); icon lạ → KeyError.
+
+        Icon có cảnh minh họa (`illustrations.scene_for_icon`) thì hiện minh họa thay vòng tròn icon."""
         icons.SIZES[icon_name]  # tên lạ → KeyError
         self.icon_badge.icon_name = icon_name
         self.icon_badge.update()
+        scene = scene_for_icon(icon_name)
+        if scene is not None:
+            self.illustration.set_scene(scene)  # đặt cảnh trước khi hiện: hiện lần đầu mới chạy
+        self.icon_badge.setVisible(scene is None)
+        self.illustration.setVisible(scene is not None)
         self._title = title
         self.title_label.setText(title)
         self.text_label.setText(text)

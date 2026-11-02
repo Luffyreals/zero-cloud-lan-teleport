@@ -6,8 +6,9 @@ nối các signal. Module này không import `home` hay `main_window`, không ch
 giá trị ban đầu (tên gợi ý, thư mục gợi ý, trạng thái tự khởi động) do `ui.app` đọc rồi truyền vào.
 Chưa bấm “Bắt đầu” thì Teleport không chạy, không quảng bá (`ui.app`).
 
-**Bố cục** (từ trên xuống, dưới logo + tên app của `StartPanel`): câu giá trị `firstRunTagline`
-(SECTION); ba ý `firstRunFeatures` (icon 20 px tô `text_muted`, trang trí, cùng chữ thân):
+**Bố cục** (từ trên xuống, dưới logo + tên app của `StartPanel`): minh họa `illustration`
+(`illustrations.Scene.WELCOME`, căn giữa, trang trí: không nhận Tab, không tên trợ năng); câu giá trị
+`firstRunTagline` (SECTION); ba ý `firstRunFeatures` (icon 20 px tô `text_muted`, trang trí, cùng chữ thân):
 `featureNoAccount`, `featureEncrypted`, `featureResume`; nhãn `firstRunNameLabel` (đậm vừa, buddy của
 ô) + ô `firstRunNameEdit` + lỗi `firstRunNameError` (`tone=danger`, ẩn khi không lỗi) + câu mvp F1
 `firstRunNameHint` (`tone=muted`, `texts.device_name_notice`); nhãn `firstRunDirCaption` + hàng
@@ -17,7 +18,8 @@ Chưa bấm “Bắt đầu” thì Teleport không chạy, không quảng bá (
 không hỗ trợ) + giải thích `firstRunAutostartHint` (`tone=muted`) + câu trạng thái
 `firstRunAutostartState` (`tone=warning`, chỉ khi registry ở OTHER/BLOCKED); câu đồng ý
 `firstRunConsent` (`tone=muted`). Nút “Bắt đầu” là `StartPanel.start_button`, không nằm ở đây.
-Khoảng cách 8 px trong một nhóm, 16 px giữa các nhóm, 24 px sau phần giới thiệu. Mọi nhãn là
+Khoảng cách 8 px trong một nhóm (cả từ minh họa tới câu giá trị), 16 px giữa các nhóm, 24 px sau
+phần giới thiệu. Mọi nhãn là
 `Qt.PlainText`; màu chỉ qua `theme.TONE_PROPERTY` (không thêm luật stylesheet), icon tô lại khi đổi
 sáng/tối (`PaletteChange`).
 
@@ -75,6 +77,7 @@ from PySide6.QtWidgets import (
 from teleport.app.autostart import AutostartState
 from teleport.core.messages import validate_device_name
 from teleport.ui import icons, texts, theme
+from teleport.ui.illustrations import Illustration, Scene
 from teleport.ui.send import printable
 from teleport.ui.settings import (
     NAME_MAX_INPUT,
@@ -259,6 +262,7 @@ class FirstRunForm(QWidget):
         self._autostart_supported = False
         self._autostart_hint: TextSource = ""
 
+        self.illustration = Illustration(Scene.WELCOME, self)  # trang trí, không nhận Tab
         self.tagline_label = _text_label("firstRunTagline")
         self.tagline_label.setFont(theme.font_for(theme.TextStyle.SECTION, self.tagline_label.font()))
         self.features = QWidget(self)
@@ -329,6 +333,8 @@ class FirstRunForm(QWidget):
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
+        column.addWidget(self.illustration, 0, Qt.AlignmentFlag.AlignHCenter)
+        column.addSpacing(_ITEM_GAP)  # minh họa đi cùng câu giá trị: khoảng cách trong nhóm
         column.addWidget(self.tagline_label)
         column.addSpacing(_ITEM_GAP)
         column.addWidget(self.features)
