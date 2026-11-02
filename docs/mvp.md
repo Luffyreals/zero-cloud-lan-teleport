@@ -93,7 +93,7 @@ Bản tối thiểu để demo ở buổi demo hackathon, nhỏ hơn MVP v1.0 �
 | H4 | Đóng hẳn app nhận giữa lượt truyền rồi mở lại: lượt truyền tự chạy tiếp và hoàn tất, SHA-256 trùng (F6) | Như H3 |
 | H5 | Gửi lại đúng file ở H2: máy nhận lưu thành `ten (1).ext`, file cũ không đổi; máy thứ ba chưa ghép đôi (hoặc máy B sau khi máy A hủy ghép đôi với B) không gửi được file tới máy A: máy B thấy câu của dòng “Máy kia từ chối máy này” (mục 8), máy A không hiện hộp thoại nhận và không có file mới | Xem thư mục nhận; `Get-FileHash` file cũ. Với máy B: hủy ghép đôi ở máy A, giữ nguyên ở máy B, rồi B gửi file tới A; kiểm xong hủy nốt ở máy B để **cả hai** máy về chưa ghép đôi |
 
-Không dừng thêm tính năng trước buổi demo ([ke_hoach.md](ke_hoach.md) mục 5.5): bản zip đã kiểm H1–H5 được chốt theo commit, còn `main` tiếp tục nhận thay đổi. Không đạt kịp thì demo bằng CLI cho phần giao diện còn thiếu; H2–H5 vẫn phải đạt bằng CLI.
+Từ 03/11 tới hết buổi demo, `main` đóng băng tính năng: chỉ nhận bản sửa lỗi, luật ở [ke_hoach.md](ke_hoach.md) mục 5.5. Bản zip đã kiểm H1–H5 được chốt theo commit. Không đạt kịp thì demo bằng CLI cho phần giao diện còn thiếu; H2–H5 vẫn phải đạt bằng CLI.
 
 Kịch bản demo hackathon (5 phút): các dòng 0:00–3:00 của mục 13, thêm H4 (đóng app nhận rồi mở lại) và dòng 4:00 (tắt Internet của router). Bỏ clipboard và so sánh với Google Drive.
 
