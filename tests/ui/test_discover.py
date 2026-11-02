@@ -725,12 +725,30 @@ def test_angle_order_is_a_permutation_and_gap_is_8():
 
 
 def test_animations_enabled_is_true_off_windows(monkeypatch):
+    """spec-g1 Q16: ngoài Windows đọc seam macOS/GNOME (vá, tất định trên mọi HĐH), mỗi seam đúng 1 lần."""
     from teleport.ui import motion
 
-    if sys.platform != "win32":
-        assert motion.animations_enabled() is True
+    calls = {"macos": 0, "gnome": 0}
+
+    def macos_reduce_motion() -> bool:
+        calls["macos"] += 1
+        return False
+
+    def gnome_animations() -> bool:
+        calls["gnome"] += 1
+        return True
+
+    monkeypatch.setattr(motion, "_query_macos_reduce_motion", macos_reduce_motion)
+    monkeypatch.setattr(motion, "_query_gnome_animations", gnome_animations)
     monkeypatch.setattr(sys, "platform", "linux")
     assert motion.animations_enabled() is True
+    assert calls == {"macos": 0, "gnome": 1}
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert motion.animations_enabled() is True
+    assert calls == {"macos": 1, "gnome": 1}
+    monkeypatch.setattr(sys, "platform", "freebsd14")
+    assert motion.animations_enabled() is True
+    assert calls == {"macos": 1, "gnome": 1}
 
 
 @pytest.mark.parametrize(

@@ -126,6 +126,8 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 
 ### Changed
 - Giao diện: câu ở luồng chat trống nhắc thêm Ctrl+V để dán file đã chép; tooltip “Thử lại” ghi phím F5. Thả file vào một máy không nhận được file (bị chặn, danh tính đã đổi, khác phiên bản) nay bị bỏ qua ngay ở giao diện.
+- Giao diện tôn trọng “Giảm chuyển động” của macOS và tùy chọn tắt hoạt ảnh của GNOME (`enable-animations`), như đã làm với cài đặt hiệu ứng của Windows: khi tắt, vòng sóng ở trang “Tìm máy mới” không chạy. Không đọc được cài đặt thì coi như được chạy hoạt ảnh.
+- Nội bộ giao diện: `teleport.ui.motion` có nền tảng chuyển động dùng chung cho các đợt sau: token thời lượng và đường cong, `animate` / `animate_value` (tắt hiệu ứng thì nhảy thẳng tới trạng thái cuối), `Loop` (hoạt ảnh lặp tự dừng sau tối đa 5 giây, dừng khi cửa sổ ẩn hay thu nhỏ), `Fader` (mờ chéo bằng ảnh chụp), `fade_in_window`, `HeightAnimator` và `finish_all()`. Chưa màn nào dùng; test giao diện mặc định chạy ở chế độ tức thì.
 - Giao diện: bóng thoại “vẫn chạy ở khay” khi đóng cửa sổ chỉ hiện lần đầu tiên, không lặp lại ở các lần mở app sau. `settings.json` có thêm `window`, `last_conversation` và `tray_hint_shown` (`docs/architecture.md` mục 4); giá trị hỏng chỉ làm mất đúng trường đó. Bản cũ hơn mở cùng thư mục cấu hình vẫn giữ các khóa này. Nội bộ: `Node.set_ui_preferences` trả `bool` và không ghi file khi không có gì đổi (cho mọi trường); `app.settings.WindowGeometry` mới.
 - Tên hiển thị của app là “ZCL Teleport” (tên ngắn của Zero-Cloud LAN Teleport): tiêu đề cửa sổ, chữ cạnh logo, khay hệ thống, thông báo, bộ cài, lối tắt Start Menu / Desktop và mục trong “Apps”. Thông báo khi chạy từ mã nguồn trên Windows không còn ghi “NhaCongDong.Teleport” ở đầu. Thư mục cài, thư mục cấu hình, thư mục nhận file, tên `Teleport.exe` và lệnh `teleport` giữ nguyên; cài đè bản cũ thì lối tắt tên “Teleport” được thay bằng lối tắt mới.
 - Logo mới (con mèo hình vô cực, mũi tên gửi đi, sóng mạng) cho cửa sổ, khay hệ thống và `Teleport.exe`, thay ô vuông xanh có mũi tên trắng.
@@ -202,6 +204,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 - Lời hỏi `[c/k]` của `listen`, `pair` và `receive` được in lại khi có dòng khác in chen giữa lúc đang chờ trả lời.
 
 ### Fixed
+- Giao diện: khay hệ thống không còn báo lỗi khi thông báo clipboard hết giờ đúng lúc khay vừa bị gỡ (ví dụ lúc thoát app).
 - Thoát Teleport trong lúc đang gửi file và đang đồng bộ clipboard lớn tới một máy: máy kia giờ luôn thấy lượt truyền bị hủy (“đã hủy”), không còn có lúc thấy mất kết nối rồi “Đang nối lại…”. Kết nối được đóng gọn ngay cả khi máy kia vẫn đang gửi dữ liệu, thay vì bị cắt ngang làm mất phần cuối chưa đọc. Máy lạ gửi dồn dữ liệu đúng lúc kết nối ghép đôi đang đóng thì kết nối vẫn bị cắt ngay như trước, nên không chiếm được CPU của máy này.
 - Giao diện: mỗi lời mời nhận file chỉ gửi đúng một quyết định; trả lời gần như cùng lúc ở hai chỗ (hộp hỏi, bong bóng, nút Hủy) không còn biến “Nhận” thành từ chối khi đang kiểm lại chỗ trống sau khi đổi thư mục nhận.
 - Giao diện: câu báo lỗi của lượt nhận (lỗi ghi đĩa, thư mục nhận không còn) nêu đúng thư mục lúc lượt dừng, kể cả sau khi đã đổi thư mục nhận.
