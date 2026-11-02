@@ -300,7 +300,7 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 - Kéo thả file vào chấm (hoặc chuột phải → “Gửi file…”); hộp thoại chấp nhận ở máy nhận; danh sách lượt truyền với tiến độ/tốc độ/thời gian còn lại/trạng thái và nút hủy; thông báo hệ thống khi nhận xong; lịch sử theo từng thiết bị (mvp F5).
 - Hộp thoại ghép đôi; màn hình cài đặt đủ các mục F10.
 - Công tắc “Cho máy chưa ghép đôi thấy máy này” (mvp F10, mặc định bật): tắt thì node ngừng quảng bá mDNS nhưng vẫn duyệt và tự kết nối ra tới thiết bị tin cậy; đang ẩn mà không ở chế độ chờ ghép đôi (mvp F3) thì cắt kết nối ẩn danh ngay sau bắt tay TLS, không gửi `hello` (`protocol.md` mục 2.3, 8).
-- Nút và màn hình “Chờ ghép đôi” (mvp F3, mục 7.5). Giao diện bật/tắt việc nhận ghép đôi trong lúc node đang chạy, theo công tắc ở F10 và việc mở/đóng màn hình đó, qua `Node.accept_pairing` (đã đổi được lúc chạy).
+- ✅ Nút và màn hình “Chờ ghép đôi” (mvp F3, mục 7.5; `ui/wait_pairing.py`). Giao diện bật/tắt việc nhận ghép đôi trong lúc node đang chạy, theo công tắc ở F10 và việc mở/đóng màn hình đó, qua `Node.accept_pairing` (đã đổi được lúc chạy).
 - Các thông báo lỗi theo mvp mục 8.
 - Khay hệ thống, chạy nền (F9); node chạy trong tiến trình giao diện, một bản giao diện mỗi thư mục cấu hình ([architecture.md](architecture.md) mục 2).
 - IPC CLI↔giao diện (CLI gửi lệnh cho node của giao diện thay vì tự chạy node): **dời ra khỏi Giai đoạn 4**, chưa có lịch. Tới khi có, CLI và giao diện cùng thư mục cấu hình loại trừ nhau và CLI báo phải thoát giao diện trước (mvp mục 8).

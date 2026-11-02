@@ -27,8 +27,9 @@ loại lỗi và traceback (mvp N9).
 `accept_pairing=False` (đóng mặc định). Ngay sau khi `start()` xong, trên thread node và trước khi
 post `started`, `NodeHost.apply_pairing_policy(node)` đặt `node.accept_pairing = node.visible or
 đang mở “Chờ ghép đôi”`. Trạng thái “đang chờ ghép đôi” là một biến duy nhất của `NodeHost`
-(`_wait_pairing_open`), chỉ đọc/ghi trên thread node: D3 đặt nó bằng `set_wait_pairing_open(node, flag)`
-trong một `call` (đặt rồi áp lại luật ngay). **Hợp đồng**: mọi chỗ đổi `visible` phải gọi
+(`_wait_pairing_open`), chỉ đọc/ghi trên thread node: trang “Chờ ghép đôi” (`ui.wait_pairing`) đặt nó
+bằng `set_wait_pairing_open(node, flag)` trong một `call` (đặt rồi áp lại luật ngay) mỗi lần trang mở
+hay đóng; host mới bắt đầu với False. **Hợp đồng**: mọi chỗ đổi `visible` phải gọi
 `node.set_visible(v)` rồi `host.apply_pairing_policy(node)` trong **cùng một** `host.call` (một khối
 đồng bộ trên loop), nên không có lúc nào máy ẩn mà vẫn nhận yêu cầu ghép đôi (máy ẩn đang gửi `hello`
 cho máy lạ qua `Node._allows_anonymous`). Khoảng trống chấp nhận được: từ lúc cổng mở tới hết
@@ -293,7 +294,7 @@ class NodeHost(QObject):
         self._stop_requested = False
         # Chỉ thread node.
         self._node: Node | None = None
-        self._wait_pairing_open = False  # trang “Chờ ghép đôi” đang mở (D3); luật nhận ghép đôi
+        self._wait_pairing_open = False  # trang “Chờ ghép đôi” đang mở; luật nhận ghép đôi
         self._serving = False  # node đã chạy và chưa bắt đầu dừng
         self._jobs: set[asyncio.Future[Any]] = set()  # việc `submit` đang chạy
 
@@ -346,7 +347,8 @@ class NodeHost(QObject):
         apply_pairing_policy(node, wait_pairing_open=self._wait_pairing_open)
 
     def set_wait_pairing_open(self, node: Node, open_: bool) -> None:
-        """**Thread node** (bên trong `call`): đặt “đang chờ ghép đôi” (D3) rồi áp lại luật ngay."""
+        """**Thread node** (bên trong `call`): đặt “đang chờ ghép đôi” (trang ở `ui.wait_pairing`) rồi
+        áp lại luật ngay."""
         self._wait_pairing_open = bool(open_)
         self.apply_pairing_policy(node)
 
