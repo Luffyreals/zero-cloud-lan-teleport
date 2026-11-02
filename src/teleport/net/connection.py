@@ -238,7 +238,7 @@ class PeerInfo:
 
 
 def _abort(writer: asyncio.StreamWriter) -> None:
-    """Đóng ngay (RST, không chờ close_notify); gọi nhiều lần không lỗi."""
+    """Đóng ngay (abort, không chờ close_notify; không hứa RST); gọi nhiều lần không lỗi."""
     try:
         writer.transport.abort()
     except Exception:  # transport đã đóng hoặc đang đóng dở
@@ -602,6 +602,11 @@ class Connection:
         đọc tiếp sẽ lệch khung; lần dùng sau → ConnectionLostError. Bị hủy khi chưa đọc
         byte nào của khung → kết nối vẫn dùng được, message kế tiếp không bị mất. Chiều gửi
         đã khóa vì máy kia đóng gọn (xem `send`) không ảnh hưởng `receive`.
+
+        Header vượt trần → abort rồi FramingError (protocol mục 2.3): phần thân chưa đọc
+        thì đọc tiếp sẽ lệch khung; lần dùng sau → ConnectionLostError. Thân sai (JSON hỏng,
+        MessageError) thì không abort: khung đã đọc trọn, bên gọi còn đóng gọn được (ví dụ
+        `ControlChannel` gửi nốt `pong` đang chờ).
         """
         if self._kind is ConnectionKind.DATA:
             raise ValueError("kết nối dữ liệu không chở message: dùng read_block / read_raw")
@@ -615,7 +620,12 @@ class Connection:
             header = await self._read_exactly(HEADER.size, at_boundary=True)
             if header is None:
                 return None
-            length = decode_header(header, _max_size(self._kind))
+            try:
+                length = decode_header(header, _max_size(self._kind))
+            except FramingError:
+                log.debug("%r: header vượt trần, abort", self)
+                self._abort()
+                raise
             body = await self._read_exactly(length, at_boundary=False)
             assert body is not None
             msg = parse_message(decode_body(body))
