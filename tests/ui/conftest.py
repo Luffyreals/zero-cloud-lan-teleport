@@ -24,6 +24,13 @@ Fixture chính:
 - `aumid_registration` (tự dùng): `main` không ghi registry thật; fixture trả hàm đăng ký thật.
 - `ui_language_reset` (tự dùng): ngôn ngữ của hệ điều hành coi là tiếng Việt và mỗi test kết thúc ở
   chuỗi nguồn, để test không phụ thuộc locale của máy chạy test (có `teleport_en.qm` rồi).
+- `motion_instant` (tự dùng): `ui/motion.py` ở chế độ tức thì (`_force_instant(True)`): mọi helper
+  chuyển động gán ngay giá trị cuối, test không chờ hoạt ảnh (spec-g1 mục 3). Dọn:
+  `_stop_all_for_tests()` (dừng mọi hoạt ảnh và `Loop`, không gọi callback) rồi `_reset_for_tests()`
+  (xóa cache GNOME, tắt chế độ tức thì). Không chạm `animations_enabled()` (fixture `waves` của
+  `test_discover.py` vẫn vá hàm đó cho radar).
+- `real_motion`: test xin khi cần hoạt ảnh chạy thật: tắt chế độ tức thì và vá
+  `motion.animations_enabled` thành `lambda: True`. Chỉ kiểm giá trị cuối, không giá trị giữa chừng.
 """
 
 from __future__ import annotations
@@ -279,6 +286,43 @@ def ui_language_reset(qapp, monkeypatch):
     if i18n.current_language() != i18n.SOURCE_LANGUAGE:
         i18n.set_language(i18n.SOURCE_LANGUAGE)
         qapp.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def motion_instant(qapp):
+    """Mọi test ui: chuyển động ở chế độ tức thì (spec-g1 mục 3, mục 9 Q9).
+
+    Teardown: `_stop_all_for_tests()` (dừng hoạt ảnh/`Loop` còn chạy, không gọi `on_finished`/`on_stop`,
+    trả `windowOpacity` về 1.0) rồi `_reset_for_tests()`. `motion` chưa có các seam này hay import lỗi
+    (code đang viết dở) thì bỏ qua: test của chính nó tự đỏ, không làm đỏ mọi test ui.
+    """
+    try:
+        from teleport.ui import motion
+
+        force = motion._force_instant
+        stop_all = motion._stop_all_for_tests
+        reset = motion._reset_for_tests
+    except Exception:
+        yield
+        return
+    force(True)
+    yield
+    stop_all()
+    reset()
+
+
+@pytest.fixture
+def real_motion(monkeypatch):
+    """Hoạt ảnh của `ui/motion.py` chạy thật: tắt chế độ tức thì, `animations_enabled` → True.
+
+    Fixture `motion_instant` (autouse, dựng trước) dọn sau cùng. Test muốn “hệ điều hành tắt hiệu ứng”
+    thì vá lại `motion.animations_enabled` (lần vá sau thắng).
+    """
+    from teleport.ui import motion
+
+    motion._force_instant(False)
+    monkeypatch.setattr(motion, "animations_enabled", lambda: True)
+    return motion
 
 
 @pytest.fixture(autouse=True)
