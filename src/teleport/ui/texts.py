@@ -22,7 +22,8 @@ lạ không làm hỏng câu, và chữ do máy kia đặt chứa `{size}` khôn
 
 Tên lệnh CLI trong câu của GUI nằm trong ngoặc kép “…” (không dùng backtick như ở CLI).
 
-`APP_NAME` là tên hiển thị của sản phẩm (tiêu đề cửa sổ, chữ cạnh logo, khay, tiêu đề bóng thoại, hộp
+`APP_NAME` là tên hiển thị của sản phẩm (tiêu đề cửa sổ, kèm % tổng khi đang truyền qua
+`window_title`; chữ cạnh logo, khay, tiêu đề bóng thoại, hộp
 lỗi khởi động, tên đăng ký cho AppUserModelID ở `ui.app`): tên riêng nên không dịch. Trong câu chữ,
 “Teleport” vẫn là cách gọi tắt.
 """
@@ -222,6 +223,17 @@ def not_responding() -> tuple[str, list[str]]:
 
 
 # ---- Cửa sổ, khay --------------------------------------------------------------------------
+
+
+def window_title(percent: int | None) -> str:
+    """Tiêu đề cửa sổ chính: `APP_NAME`, hay “60% · ZCL Teleport” khi đang truyền (`ui.progress`).
+
+    `percent` kẹp trong 0…100; None → chỉ `APP_NAME`."""
+    if percent is None:
+        return APP_NAME
+    value = min(100, max(0, int(percent)))
+    template = QCoreApplication.translate("Texts", "{percent}% · {app}")
+    return fill(template, percent=str(value), app=APP_NAME)
 
 
 def still_running() -> str:

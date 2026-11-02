@@ -37,8 +37,10 @@ chạy (lần chạy đầu, đang khởi động, lỗi) thì hiện mà tắt.
   rồi cache; `_render()` chỉ `setIcon` khi dấu đổi. Không polling; hẹn giờ duy nhất là của thông báo
   clipboard (bên dưới).
 - Tooltip `tray_tooltip` (hàm thuần, dịch lúc gọi, ngữ cảnh “Tray”): dòng 1 `texts.APP_NAME`; node chạy
-  thì thêm dòng clipboard (nếu đang có, bên dưới), “Đang truyền n lượt”, rồi “Không nhận file: …” hay
-  (nếu không) “Đã tạm dừng nhận file mới và clipboard”, không dòng nào thì “Sẵn sàng nhận”.
+  thì thêm dòng clipboard (nếu đang có, bên dưới), “Đang truyền n lượt” (có % tổng thì “Đang truyền n
+  lượt · 60%”: `set_progress`, do `ui.transfers` đẩy cùng giá trị với tiêu đề cửa sổ, `ui.progress`;
+  không có % hay không còn lượt nào thì câu cũ), rồi “Không nhận file: …” hay (nếu không) “Đã tạm
+  dừng nhận file mới và clipboard”, không dòng nào thì “Sẵn sàng nhận”.
 - **Chữ máy kia trong tooltip** (chỉ tên máy của dòng clipboard, mvp F8): tooltip khay là
   rich text trên X11 và Windows cắt nó ở `TOOLTIP_MAX_UNITS` đơn vị UTF-16. Tên đã qua
   `texts.peer_label` rồi `tray_safe` (`<` → `‹`, `>` → `›`, `&` → `＆`; không dùng
@@ -52,10 +54,12 @@ chạy (lần chạy đầu, đang khởi động, lỗi) thì hiện mà tắt.
   Hãy gửi dạng file.”). Hiện `CLIP_FLASH_MS` (đọc lúc dùng) bằng một `QTimer` một lần; thông báo mới
   thay thông báo cũ và đếm lại; node thôi chạy (`set_running(False)`) thì xóa. Không bóng thoại.
 
-**Bóng thoại** (`show_message(text, folder=None)`, chỗ duy nhất hiện bóng thoại; F4 gộp ở đây): chỉ hiện
-khi có khay và biểu tượng đang hiện; khi thật sự hiện thì nhớ `folder` của bóng thoại đó (None cũng nhớ).
-Người dùng bấm vào bóng thoại (`QSystemTrayIcon.messageClicked`) → phát `message_clicked(folder)` với thư
-mục của bóng thoại gần nhất (`Path` hay None); `ui.app` quyết định mở thư mục hay đưa cửa sổ lên trước.
+**Bóng thoại** (`show_message(text, folder=None)`, chỗ duy nhất hiện bóng thoại; gộp thông báo nhận xong
+nằm ở `ui.notify` / `ui.transfers`): chỉ hiện khi có khay và biểu tượng đang hiện; khi thật sự hiện thì
+nhớ `folder` của bóng thoại đó (None cũng nhớ). `folder` là `Path`, `shell.Reveal` (file vừa nhận, để
+chọn sẵn trong Explorer) hay None. Người dùng bấm vào bóng thoại (`QSystemTrayIcon.messageClicked`) →
+phát lại nguyên giá trị của bóng thoại gần nhất qua `message_clicked(object)`; `ui.app` quyết định hiện
+file, mở thư mục hay đưa cửa sổ lên trước.
 Bóng thoại luôn mang logo **không dấu** (`make_icon()`, cache), không đọc biểu tượng đang hiện và không
 dùng icon chuẩn “i” của hệ thống.
 
@@ -81,6 +85,7 @@ from PySide6.QtGui import QAction, QBrush, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from teleport.ui import logo, texts, theme
+from teleport.ui.shell import Reveal
 
 log = logging.getLogger(__name__)
 
@@ -120,6 +125,7 @@ class TrayState:
     paused: bool = False  # người dùng tạm dừng nhận (node đã xác nhận)
     unavailable: bool = False  # thư mục nhận hỏng: không nhận file
     clipboard: ClipNotice | None = None  # thông báo clipboard đang hiện (`flash_clipboard`)
+    progress: int | None = None  # % tổng đang truyền (`set_progress`, cùng giá trị với tiêu đề cửa sổ)
 
 
 class TrayBadge(StrEnum):
@@ -197,7 +203,13 @@ def tray_tooltip(state: TrayState) -> str:
     if not state.running:
         return texts.APP_NAME
     t = QCoreApplication.translate
-    active = t("Tray", "Đang truyền %n lượt", None, state.active) if state.active > 0 else None
+    active: str | None = None
+    if state.active > 0 and state.progress is not None:
+        active = texts.fill(
+            t("Tray", "Đang truyền %n lượt · {percent}%", None, state.active), percent=str(state.progress)
+        )
+    elif state.active > 0:
+        active = t("Tray", "Đang truyền %n lượt", None, state.active)
     warning: str | None = None
     if state.unavailable:
         warning = t("Tray", "Không nhận file: không mở được thư mục nhận")
@@ -336,14 +348,14 @@ class Tray(QObject):
 
     open_requested = Signal()
     quit_requested = Signal()
-    message_clicked = Signal(object)  # Path | None: thư mục của bóng thoại gần nhất
+    message_clicked = Signal(object)  # Path | shell.Reveal | None: `folder` của bóng thoại gần nhất
     send_to_requested = Signal(str)  # device_id chọn ở menu con “Gửi file…”
     discover_requested = Signal()  # “Tìm máy mới…” của menu con (chưa ghép đôi máy nào)
     pause_toggled = Signal(bool)  # người dùng bấm “Tạm dừng nhận” (True: muốn tạm dừng)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._message_folder: Path | None = None
+        self._message_folder: Path | Reveal | None = None
         self._state = TrayState()
         self._targets_provider: Callable[[], Sequence[SendTarget]] | None = None
         self._menu = QMenu()
@@ -435,6 +447,13 @@ class Tray(QObject):
     def set_activity(self, active: int) -> None:
         """Số lượt chưa kết thúc (âm coi là 0)."""
         self._apply(replace(self._state, active=max(0, int(active))))
+
+    def set_progress(self, percent: int | None) -> None:
+        """% tổng đang truyền cho tooltip (`ui.transfers` đẩy cùng giá trị với tiêu đề cửa sổ).
+
+        Không phải `int` (kể cả `bool`) hay ngoài 0…100 → None (tooltip câu cũ)."""
+        value = percent if type(percent) is int and 0 <= percent <= 100 else None
+        self._apply(replace(self._state, progress=value))
 
     def set_receiving_paused(self, paused: bool) -> None:
         """Node xác nhận đang tạm dừng (True) hay đang nhận (False): dấu chọn, dấu biểu tượng, tooltip.
@@ -528,10 +547,11 @@ class Tray(QObject):
     def visible(self) -> bool:
         return self._icon.isVisible()
 
-    def show_message(self, text: str, folder: Path | None = None) -> None:
+    def show_message(self, text: str, folder: Path | Reveal | None = None) -> None:
         """Bóng thoại từ biểu tượng khay (không làm gì nếu không có khay hay biểu tượng đang ẩn).
 
-        `folder`: thư mục mở khi người dùng bấm vào bóng thoại; chỉ nhớ khi bóng thoại thật sự hiện.
+        `folder`: thư mục mở (`Path`) hay file cần hiện (`shell.Reveal`) khi người dùng bấm vào bóng
+        thoại, phát lại nguyên qua `message_clicked`; chỉ nhớ khi bóng thoại thật sự hiện.
         """
         if Tray.is_available() and self._icon.isVisible():
             self._message_folder = folder

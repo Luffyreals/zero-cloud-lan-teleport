@@ -17,8 +17,9 @@ tạm dừng). Dòng 2 thanh tiến độ mảnh `BubbleBar` (rãnh `track`, ph�
 `BAR_MAX`), chỉ khi lượt chưa kết thúc. Dòng 3 icon trạng thái (`status_icon`, chỉ khi đã kết thúc:
 `checkmark` màu `success` khi xong, `warning` màu `danger` khi lỗi, `dismiss` màu `text_muted` khi hủy
 hay từ chối) và nhãn trạng thái ngắn (`status_label`); dưới đó dòng phụ (`detail_label`, xuống
-dòng). Dòng 4 các nút “Mở thư mục” (bên nhận đã xong, mở thư mục cha của `FileDone.path`), “Gửi
-lại” và “Đổi thư mục nhận” (bên dưới). Cuối cùng là `extension_slot`: lời mời nhận file đang chờ
+dòng). Dòng 4 các nút “Hiện trong thư mục” (bên nhận đã xong; `ui.chat` gọi `ui.shell.show_in_folder`
+với `saved_paths`: mọi `FileDone.path` bên nhận, tối đa `shell.REVEAL_MAX_ITEMS` cuối), “Gửi lại” và
+“Đổi thư mục nhận” (bên dưới). Cuối cùng là `extension_slot`: lời mời nhận file đang chờ
 (spec B4 mục 3.5) cắm ở đây một `OfferPanel`.
 
 
@@ -87,7 +88,7 @@ pixmap 20 thu vào nhãn 16×16.
 
 **`HistoryBubble`**: chiều theo `entry.direction`; tên `file_label(names[0])` khi một file, không thì
 “n file”; dòng phụ “cỡ · HH:mm”; trạng thái “Đã lưu” / “Đã gửi” khi xong, còn lại `result_status`,
-giá trị `result` lạ → “Lỗi” và viền DANGER (`Kind.ERROR`). Không có “Gửi lại”. “Mở thư mục” chỉ khi
+giá trị `result` lạ → “Lỗi” và viền DANGER (`Kind.ERROR`). Không có “Gửi lại”. “Hiện trong thư mục” chỉ khi
 `saved_path` tuyệt đối, và đường dẫn UNC chỉ khi thư mục nhận hiện tại nằm cùng `\\server\\share`
 (`can_open_saved`, so chuỗi sau `normcase`, không chạm đĩa).
 
@@ -144,7 +145,7 @@ from teleport.app.transfers import (
 )
 from teleport.core.history import HistoryEntry
 from teleport.core.messages import ClipKind
-from teleport.ui import icons, offer, texts, theme
+from teleport.ui import icons, offer, shell, texts, theme
 from teleport.ui.offer import OfferEntry, OfferPhase
 from teleport.ui.send import printable
 from teleport.ui.transfers_view import (
@@ -297,7 +298,7 @@ def _unc_share(path: str) -> str | None:
 
 
 def can_open_saved(saved_path: str | None, receive_dir: Path | None) -> bool:
-    """“Mở thư mục” của mục lịch sử được không (spec B3 mục 5, 9.12): `saved_path` tuyệt đối; ổ mạng
+    """“Hiện trong thư mục” của mục lịch sử được không (spec B3 mục 5, 9.12): `saved_path` tuyệt đối; ổ mạng
     hay thiết bị (`_unc_share`) chỉ khi thư mục nhận hiện tại nằm trên cùng ổ đó. Không chạm đĩa."""
     if not saved_path:
         return False
@@ -796,6 +797,8 @@ class TransferBubble(_Bubble):
         self.stalled_shown = False
         self.result: TransferFinished | None = None
         self.last_path: Path | None = None  # `FileDone.path` cuối (bên nhận)
+        # Mọi `FileDone.path` bên nhận, tối đa `shell.REVEAL_MAX_ITEMS` cuối (“Hiện trong thư mục”).
+        self.saved_paths: tuple[Path, ...] = ()
         self.renamed: dict[int, str] = {}
         self._resend_known = False
         self._resend_used = False
@@ -982,6 +985,9 @@ class TransferBubble(_Bubble):
         if self.finished or update.path is None:
             return
         self.last_path = update.path
+        if self.key.direction is Direction.RECEIVE:
+            limit = max(1, int(shell.REVEAL_MAX_ITEMS))
+            self.saved_paths = (*self.saved_paths, update.path)[-limit:]
         # Trùng tên có sẵn thì file được lưu với tên khác (protocol.md §4.4). `FileDone.name` bên nhận
         # ĐÃ là tên lưu cuối: so với tên gốc (đã làm sạch) trong `info.names`, dự phòng tên của `offer`.
         original = self.original_name(update.file_index)
@@ -1210,7 +1216,7 @@ class TransferBubble(_Bubble):
         self.cancel_button.set_label(t("Chat", "Hủy"))
         self.cancel_button.setAccessibleDescription(title)
         for button, text in (
-            (self.open_button, t("Chat", "Mở thư mục")),
+            (self.open_button, t("Chat", "Hiện trong thư mục")),
             (self.resend_button, t("Chat", "Gửi lại")),
             (self.change_dir_button, change_dir_text()),
         ):
@@ -1294,7 +1300,7 @@ class HistoryBubble(_Bubble):
         return Path(saved).parent if saved else None
 
     def set_receive_dir(self, receive_dir: Path | None) -> None:
-        """Thư mục nhận hiện tại: quyết định “Mở thư mục” của đường dẫn UNC (`can_open_saved`)."""
+        """Thư mục nhận hiện tại: quyết định “Hiện trong thư mục” của đường dẫn UNC (`can_open_saved`)."""
         self.open_button.setVisible(can_open_saved(self.entry.saved_path, receive_dir))
 
     def set_peer(self, peer: str | None) -> None:
@@ -1330,7 +1336,7 @@ class HistoryBubble(_Bubble):
                 self.status_icon.set_icon("dismiss", "text_muted")
         self.status_label.setText(status)
         self.detail_label.setVisible(False)
-        open_text = t("Chat", "Mở thư mục")
+        open_text = t("Chat", "Hiện trong thư mục")
         self.open_button.setText(open_text)
         self.open_button.setAccessibleName(open_text)
         self.open_button.setAccessibleDescription(title)

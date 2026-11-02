@@ -128,6 +128,11 @@
         <translation>HH:mm</translation>
     </message>
     <message>
+        <location filename="../chat_bubbles.py"/>
+        <source>Hiện trong thư mục</source>
+        <translation>Show in folder</translation>
+    </message>
+    <message>
         <location filename="../chat.py"/>
         <source>Hoặc bấm Gửi file ở dưới.</source>
         <translation>Or click Send files below.</translation>
@@ -176,11 +181,6 @@
         <location filename="../chat.py"/>
         <source>Mới</source>
         <translation>New</translation>
-    </message>
-    <message>
-        <location filename="../chat_bubbles.py"/>
-        <source>Mở thư mục</source>
-        <translation>Open folder</translation>
     </message>
     <message>
         <location filename="../chat.py"/>
@@ -1933,6 +1933,11 @@
     </message>
     <message>
         <location filename="../texts.py"/>
+        <source>{percent}% · {app}</source>
+        <translation>{percent}% · {app}</translation>
+    </message>
+    <message>
+        <location filename="../texts.py"/>
         <source>{whole},{tenth}</source>
         <comment>số có một chữ số thập phân, ví dụ 2,1</comment>
         <translation>{whole}.{tenth}</translation>
@@ -2238,7 +2243,15 @@
         <translation>Saved as {file} · Integrity verified</translation>
     </message>
     <message numerus="yes">
-        <location filename="../transfers.py"/>
+        <location filename="../notify.py"/>
+        <source>Đã nhận %n file từ {devices} máy.</source>
+        <translation>
+            <numerusform>Received %n file from {devices} devices.</numerusform>
+            <numerusform>Received %n files from {devices} devices.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../notify.py"/>
         <source>Đã nhận %n file từ {name}.</source>
         <translation>
             <numerusform>Received %n file from {name}.</numerusform>
@@ -2246,7 +2259,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../transfers.py"/>
+        <location filename="../notify.py"/>
         <source>Đã nhận {file} từ {name}.</source>
         <translation>Received {file} from {name}.</translation>
     </message>
@@ -2350,6 +2363,14 @@
         <translation>
             <numerusform>%n transfer in progress</numerusform>
             <numerusform>%n transfers in progress</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../tray.py"/>
+        <source>Đang truyền %n lượt · {percent}%</source>
+        <translation>
+            <numerusform>%n transfer in progress · {percent}%</numerusform>
+            <numerusform>%n transfers in progress · {percent}%</numerusform>
         </translation>
     </message>
     <message>

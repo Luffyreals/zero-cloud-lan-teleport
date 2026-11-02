@@ -41,7 +41,7 @@ dương), `settings_privacy_hidden` (máy đang ẩn),
 chưa ghép đôi không hiện), `settings_advanced` (kèm thông báo xuất log xong),
 `settings_receive_dir_unavailable` (thư mục nhận đã lưu không mở được).
 
-Luồng chat (spec B3, `ui.chat`): `chat` (luồng của PC-Nha: nhận xong “Đã lưu” + “Mở thư mục”, gửi lỗi
+Luồng chat (spec B3, `ui.chat`): `chat` (luồng của PC-Nha: nhận xong “Đã lưu” + “Hiện trong thư mục”, gửi lỗi
 viền đỏ + “Gửi lại”, đang gửi 62%, bong bóng tạm “Đang chuẩn bị…”, dòng mốc), `chat_new` (cuộn lên
 rồi có lượt mới: nút “↓ Mới”), `chat_drop` (đang kéo 3 file vào luồng), `chat_offline` (máy ngoại
 tuyến: lượt chờ kết nối, câu ngoại tuyến ở thanh dưới), `chat_history` (lịch sử hai ngày trước, hôm

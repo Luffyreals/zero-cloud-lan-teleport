@@ -80,7 +80,10 @@ kiện của phiên tới cho khóa đang có `HistoryBubble` thì bong bóng c�
 `HistoryBubble` của nó (tối đa một luồng giữ widget lịch sử, mvp N3), bong bóng của phiên giữ.
 `invalidate_history(id | None)` gỡ lịch sử của một hay mọi máy rồi nạp lại luồng đang mở;
 `showEvent` của `ChatView` nạp lại lịch sử của luồng đang mở (bong bóng đã có giữ nguyên).
-“Mở thư mục” của mục lịch sử mà `open_url` trả False → `info_bar` WARNING.
+“Hiện trong thư mục” của bong bóng nhận xong và của mục lịch sử đi qua `ui.shell.show_in_folder`
+(bong bóng: `saved_paths`, không có thì `last_path`, với `finished_receive_dir` làm `root`; mục lịch
+sử: `saved_path` với thư mục nhận hiện tại làm `root`, nên mục nhận trước khi đổi thư mục nhận chỉ mở
+thư mục cha); không mở được (kể cả dự phòng `open_url`) → `info_bar` WARNING với thư mục cha.
 
 **Màn rỗng** (spec B3 mục 9b.21): máy đang chọn chưa có bong bóng nào và không đang nạp lịch sử →
 `empty_state` (icon `attach`, “Kéo file vào đây để gửi cho X”, “Hoặc bấm Gửi file ở dưới.”, không
@@ -125,7 +128,6 @@ from PySide6.QtCore import (
     QRectF,
     Qt,
     QTimer,
-    QUrl,
     Signal,
 )
 from PySide6.QtGui import (
@@ -173,7 +175,7 @@ from teleport.app.transfers import (
 )
 from teleport.core.history import HistoryEntry
 from teleport.core.messages import ClipKind
-from teleport.ui import i18n, icons, send, texts, theme
+from teleport.ui import i18n, icons, send, shell, texts, theme
 from teleport.ui.chat_bubbles import (
     BubbleContext,
     ClipboardNote,
@@ -1591,27 +1593,36 @@ class ChatView(QWidget):
             self.resend_requested.emit(bubble.key)
 
     def _open_transfer(self, bubble: TransferBubble) -> None:
-        if bubble.last_path is not None:
-            self._open_folder(bubble.last_path.parent)
+        """“Hiện trong thư mục” của bong bóng nhận xong: chọn sẵn các file đã lưu (`ui.shell`)."""
+        if bubble.last_path is None:
+            return
+        files = bubble.saved_paths or (bubble.last_path,)
+        self._reveal(files, bubble.finished_receive_dir)
 
     def _open_history(self, bubble: HistoryBubble) -> None:
-        folder = bubble.folder()
-        if folder is not None and not bubble.open_button.isHidden():
-            self._open_folder(folder)
+        """“Hiện trong thư mục” của mục lịch sử (nút chỉ hiện khi `can_open_saved`)."""
+        saved = bubble.entry.saved_path
+        if saved and bubble.folder() is not None and not bubble.open_button.isHidden():
+            self._reveal((Path(saved),), self._receive_dir)
 
-    def _open_folder(self, folder: Path) -> None:
-        if not open_url(QUrl.fromLocalFile(str(folder))):
-            self.show_notice(
-                texts.fill(
-                    QCoreApplication.translate(
-                        "Chat",
-                        "Không mở được thư mục {path}. Thư mục có thể đã bị xóa, đổi tên hay nằm trên ổ "
-                        "đã rút ra.",
-                    ),
-                    path=printable(str(folder)),
+    def _reveal(self, files: Sequence[Path], root: Path | None) -> None:
+        """`shell.show_in_folder`; không mở được (kể cả dự phòng) → câu cảnh báo với thư mục cha."""
+        if shell.show_in_folder(files, root, open_url=lambda url: open_url(url)):
+            return
+        self._folder_warning(files[-1].parent)
+
+    def _folder_warning(self, folder: Path) -> None:
+        self.show_notice(
+            texts.fill(
+                QCoreApplication.translate(
+                    "Chat",
+                    "Không mở được thư mục {path}. Thư mục có thể đã bị xóa, đổi tên hay nằm trên ổ "
+                    "đã rút ra.",
                 ),
-                level=InfoLevel.WARNING,
-            )
+                path=printable(str(folder)),
+            ),
+            level=InfoLevel.WARNING,
+        )
 
     def _on_notice_action(self) -> None:
         with self._changes():

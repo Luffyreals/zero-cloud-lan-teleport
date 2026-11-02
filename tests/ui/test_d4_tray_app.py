@@ -764,7 +764,14 @@ def test_active_transfer_shows_transferring_badge_and_tooltip(gui, gui_wait, con
         ctl = app_of(run).transfers
         k = tkey("receive")
         ctl.on_transfer(changed(k))
-        seen["active"] = (t.badge, t.state.active, TIP_ACTIVE.format(n=1) in t.tooltip().split("\n"))
+        # Spec-f4 mục 2.3: lượt đang chạy thì dòng có thêm “ · {percent}%” (ở đây 0%).
+        line = TIP_ACTIVE.format(n=1)
+        lines = t.tooltip().split("\n")
+        seen["active"] = (
+            t.badge,
+            t.state.active,
+            any(x == line or x.startswith(line + " · ") for x in lines),
+        )
         ctl.on_transfer(finished(k, "done"))
         seen["done"] = (t.badge, t.state.active)
         quit_now(run)
