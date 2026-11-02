@@ -24,8 +24,8 @@ khay và node đang khởi động; `app.exec()`.
 - “Bắt đầu” hợp lệ (`start_requested(FirstRunChoice)`, chỉ khi WELCOME) → `_first_run = choice` rồi
   `start_node()`: `NodeOptions` có `name` (None khi trùng gợi ý), `save_args=True`, và thư mục đã chọn
   (khi khác gợi ý; không thì giữ `make_options`). `Node.start` tạo danh tính, lưu tên trước khi quảng
-  bá và lưu gốc thật của thư mục khi mở được. “Thử lại”, F5 hay lệnh `show` khi đang ERROR dùng lại
-  `_first_run` (lần trước có thể chưa lưu gì).
+  bá và lưu gốc thật của thư mục khi mở được. “Thử lại”, phím Thử lại (`ui.shortcuts`) hay lệnh
+  `show` khi đang ERROR dùng lại `_first_run` (lần trước có thể chưa lưu gì).
 - `start_failed(RECEIVE_DIR)` khi thư mục do người dùng chọn: về WELCOME (giữ chữ đã gõ, gợi ý tính
   lại), câu UNAVAILABLE dưới hàng thư mục, tiêu điểm ở “Đổi…”; lỗi khác → màn ERROR như cũ.
 - `started`: áp tự khởi động trên thread Qt **trước** `SettingsController.on_started` (rồi
@@ -54,7 +54,7 @@ dùng đã bấm đổi dạng thì bỏ) và lưu bằng `Node.set_ui_preferenc
 `NodeHost.call`; lỗi → WARNING (tên loại lỗi), lựa chọn vẫn giữ trong RAM.
 
 **Cài đặt** (spec D2): trang `ui.settings.SettingsPage` đăng ký ở đây (`window.add_page(SETTINGS)`,
-nên ⚙ và Ctrl+, chỉ có khi chạy qua `GuiApp`), model thiết bị truyền vào đúng một chỗ (`_device_model`);
+nên ⚙ và phím Cài đặt chỉ có khi chạy qua `GuiApp`), model thiết bị truyền vào đúng một chỗ (`_device_model`);
 `SettingsController` (`GuiApp.settings`) nhận host mới (`attach`), `started` (`on_started`), Thoát
 (`close_all`) và `shutdown`. “Hủy ghép đôi…” của trang → hộp xác nhận của `PairingController` như ở
 danh sách cuộc trò chuyện; “Tìm máy mới” → trang DISCOVER; hàng Thư mục nhận theo
@@ -65,7 +65,9 @@ danh sách cuộc trò chuyện; “Tìm máy mới” → trang DISCOVER; hàng
 máy này theo `Node.visible` đọc lúc `started` và `visibility_changed`. `history_cleared` (None: xóa
 toàn bộ) của trang và của `PairingController` (theo `device_id`, khi hủy ghép đôi có xóa lịch sử) →
 `TransfersController.view.invalidate_history` (gỡ lịch sử đang hiện, nạp lại luồng đang mở; spec B3
-mục 9.14). Ngôn ngữ, chế độ màu và màu
+mục 9.14). “Mở Cài đặt” của gợi ý khi dán không phải file ở luồng chat
+(`ChatView.clipboard_settings_requested(id)`) → mở trang SETTINGS, mục Thiết bị tin cậy, tiêu điểm vào
+“Đồng bộ clipboard” của máy đó (`_open_clipboard_settings`). Ngôn ngữ, chế độ màu và màu
 nhấn đã lưu (`settings.json`) được áp lúc khởi động (`_saved_settings`: `Settings.load` một lần,
 chỉ đọc, lỗi gì cũng về `Settings()`: theo hệ điều hành, màu nhấn mặc định); màn “Bắt đầu” cũng dùng
 chủ đề đọc lúc này. Cùng `Settings` đó được đưa cho `GuiApp(saved=...)` (nhớ trạng thái, bên dưới).
@@ -159,7 +161,7 @@ giữ địa chỉ cũ. Timer dừng khi dựng host mới, `start_failed`, Tho�
 `main` tắt GC tự động và thu gom định kỳ trên thread Qt, để đối tượng PySide trong vòng tham chiếu
 không bị hủy ở thread node hay thread đĩa; khôi phục sau `shutdown()`.
 
-**Thoát** (`GuiApp.request_quit(confirm=True)`, từ “Thoát” ở khay, Ctrl+Q, hay đóng cửa sổ khi
+**Thoát** (`GuiApp.request_quit(confirm=True)`, từ “Thoát” ở khay, phím Thoát, hay đóng cửa sổ khi
 không có khay): còn lượt **gửi** chưa kết thúc (`TransfersController.active_sends()`) thì đưa cửa
 sổ lên trước và mở hộp hỏi lại không chặn (`quit_box`, objectName `quitConfirmBox`, `open()`;
 nút mặc định và Esc là “Không”); đang mở rồi thì chỉ đưa hộp lên trước. Chọn “Thoát” mới thoát.
@@ -306,7 +308,7 @@ from teleport.ui.offer import OfferBook, OfferPrompts
 from teleport.ui.pairing import PairingController, repair_offline_text
 from teleport.ui.radar import DeviceListModel
 from teleport.ui.receive_dir import ChangeError, ReceiveDirController
-from teleport.ui.settings import SettingsController, SettingsPage, autostart_state_hint
+from teleport.ui.settings import Section, SettingsController, SettingsPage, autostart_state_hint
 from teleport.ui.transfers import TransfersController
 from teleport.ui.tray import ClipNotice, ClipNoticeKind, SendTarget, Tray, TrayBadge, make_icon
 from teleport.ui.wait_pairing import WaitPairingController
@@ -647,6 +649,7 @@ class GuiApp(QObject):
         self.tray.pause_toggled.connect(self._on_pause_toggled)
         self.transfers.view.change_receive_dir_requested.connect(self._choose_receive_dir)
         self.transfers.view.retry_clipboard_requested.connect(self._on_clipboard_retry)
+        self.transfers.view.clipboard_settings_requested.connect(self._open_clipboard_settings)
         app.commitDataRequest.connect(self._on_commit_data)
         self.window.conversations.unpair_requested.connect(self._on_unpair_requested)
         self.window.conversations.current_changed.connect(self._on_conversation_changed)
@@ -1124,6 +1127,11 @@ class GuiApp(QObject):
 
     def _open_settings_page(self) -> None:
         self.window.open_page(Page.SETTINGS)
+
+    def _open_clipboard_settings(self, device_id: str) -> None:
+        """“Mở Cài đặt” của gợi ý khi dán không phải file: mục Thiết bị tin cậy, ô “Đồng bộ clipboard”."""
+        if self.window.open_page(Page.SETTINGS):
+            self.settings.page.show_section(Section.DEVICES, device_id, focus="clipboard")
 
     def _on_first_run_marked(self, result: object) -> None:
         if self._quitting:

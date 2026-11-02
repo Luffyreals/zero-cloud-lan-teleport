@@ -21,7 +21,8 @@ sẵn đi qua `QCoreApplication.translate("Home", …)` gọi lúc dùng; chỉ 
   `name_label` (SECTION), hàng `address_label` (CAPTION, muted) + `copy_button`, `badge`. Lề
   16/12/12/12.
 - `SaveBar` (`saveBar`, chân “Lưu vào” toàn chiều ngang): icon + `save_label` (cắt giữa theo bề
-  ngang còn lại) + nút “Mở thư mục” (`open_button`) + nút “Đổi…” (`change_button`,
+  ngang còn lại) + nút “Mở thư mục” (`open_button`, tooltip kèm phím Mở thư mục nhận của
+  `ui.shortcuts`) + nút “Đổi…” (`change_button`,
   `changeReceiveDirButton`, phát `change_requested`; spec B1b). Lề 16/6/12/6. Ba trạng thái chữ, ưu
   tiên từ trên xuống: đang đổi (`set_pending`) “Đang đổi sang {path}…”; có thư mục nhận
   (`set_receive_dir`) “Lưu vào: {path}”; chỉ có thư mục đã lưu không mở được (`set_unavailable`)
@@ -86,7 +87,7 @@ from PySide6.QtWidgets import (
 )
 
 from teleport.core.display import display_name
-from teleport.ui import icons, texts, theme
+from teleport.ui import icons, shortcuts, texts, theme
 from teleport.ui.first_run import FirstRunForm
 from teleport.ui.send import printable
 from teleport.ui.tray import make_icon
@@ -536,7 +537,11 @@ class SaveBar(QFrame):
         self.save_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.save_label.installEventFilter(self)  # cắt lại chữ mỗi khi nhãn đổi bề ngang
         self.open_button = IconButton(
-            "folder_open", QCoreApplication.translate("Home", "Mở thư mục"), self, show_text=True
+            "folder_open",
+            QCoreApplication.translate("Home", "Mở thư mục"),
+            self,
+            shortcut=shortcuts.sequence(shortcuts.Shortcut.OPEN_RECEIVE_DIR),
+            show_text=True,
         )
         self.open_button.setObjectName("openReceiveDirButton")
         self.open_button.clicked.connect(self._open)

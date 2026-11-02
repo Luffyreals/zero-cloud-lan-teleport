@@ -109,6 +109,11 @@
     </message>
     <message>
         <location filename="../chat.py"/>
+        <source>Ghép đôi một máy trước ({discover_key}), rồi nhấn {key} để gửi file đã chép.</source>
+        <translation>Pair a device first ({discover_key}), then press {key} to send copied files.</translation>
+    </message>
+    <message>
+        <location filename="../chat.py"/>
         <source>Gửi file</source>
         <translation>Send files</translation>
     </message>
@@ -134,8 +139,8 @@
     </message>
     <message>
         <location filename="../chat.py"/>
-        <source>Hoặc bấm Gửi file ở dưới.</source>
-        <translation>Or click Send files below.</translation>
+        <source>Hoặc bấm Gửi file ở dưới, hay nhấn {key} để dán file đã chép.</source>
+        <translation>Or click Send files below, or press {key} to paste copied files.</translation>
     </message>
     <message>
         <location filename="../chat_bubbles.py"/>
@@ -181,6 +186,11 @@
         <location filename="../chat.py"/>
         <source>Mới</source>
         <translation>New</translation>
+    </message>
+    <message>
+        <location filename="../chat.py"/>
+        <source>Mở Cài đặt</source>
+        <translation>Open Settings</translation>
     </message>
     <message>
         <location filename="../chat.py"/>
@@ -239,6 +249,11 @@
         <location filename="../chat_bubbles.py"/>
         <source>{date} {time}</source>
         <translation>{date} {time}</translation>
+    </message>
+    <message>
+        <location filename="../chat.py"/>
+        <source>{key} ở đây chỉ gửi file đã chép trong {file_manager}. Chữ và ảnh đi qua “Đồng bộ clipboard” với {name} (Cài đặt ▸ Thiết bị tin cậy, cần bật ở cả hai máy): chép ở máy này rồi dán thẳng ở máy kia.</source>
+        <translation>{key} here only sends files copied in {file_manager}. Text and images go through “Sync clipboard” with {name} (Settings ▸ Trusted devices, turned on for both devices): copy on this device, then paste directly on the other.</translation>
     </message>
     <message>
         <location filename="../chat.py"/>
@@ -853,8 +868,8 @@
     </message>
     <message>
         <location filename="../main_window.py"/>
-        <source>Khởi động lại Teleport (F5)</source>
-        <translation>Restart Teleport (F5)</translation>
+        <source>Khởi động lại Teleport ({key})</source>
+        <translation>Restart Teleport ({key})</translation>
     </message>
     <message>
         <location filename="../main_window.py"/>
@@ -870,11 +885,6 @@
         <location filename="../main_window.py"/>
         <source>Mở Teleport trên máy kia, trong cùng mạng với máy này. Máy đó sẽ hiện ở cột bên trái; bấm vào tên máy để ghép đôi.</source>
         <translation>Open Teleport on the other device, on the same network as this one. It will appear in the left column; click its name to pair.</translation>
-    </message>
-    <message>
-        <location filename="../main_window.py"/>
-        <source>Quay lại</source>
-        <translation>Back</translation>
     </message>
     <message>
         <location filename="../main_window.py"/>
@@ -900,11 +910,6 @@
         <location filename="../main_window.py"/>
         <source>Đang khởi động…</source>
         <translation>Starting…</translation>
-    </message>
-    <message>
-        <location filename="../main_window.py"/>
-        <source>Đóng cửa sổ</source>
-        <translation>Close window</translation>
     </message>
     <message>
         <location filename="../main_window.py"/>
@@ -1450,6 +1455,11 @@
     </message>
     <message>
         <location filename="../settings.py"/>
+        <source>Dùng Teleport không cần chuột. Danh sách chỉ để xem, không đổi được phím.</source>
+        <translation>Use Teleport without a mouse. This list is for reference; the keys can't be changed.</translation>
+    </message>
+    <message>
+        <location filename="../settings.py"/>
         <source>Dọn phần nhận dở sau</source>
         <translation>Clean up partially received files after</translation>
     </message>
@@ -1580,6 +1590,16 @@
     </message>
     <message>
         <location filename="../settings.py"/>
+        <source>Phím</source>
+        <translation>Keys</translation>
+    </message>
+    <message>
+        <location filename="../settings.py"/>
+        <source>Phím tắt</source>
+        <translation>Keyboard shortcuts</translation>
+    </message>
+    <message>
+        <location filename="../settings.py"/>
         <source>Phần mềm tự do theo GNU GPL phiên bản 3.</source>
         <translation>Free software under the GNU GPL version 3.</translation>
     </message>
@@ -1612,6 +1632,11 @@
         <location filename="../settings.py"/>
         <source>Teleport đang được đặt khởi động cùng Windows từ một thư mục cài hoặc thư mục cấu hình khác. Bật công tắc để dùng bản này.</source>
         <translation>Teleport is set to start with Windows from another install folder or configuration folder. Turn on the switch to use this copy.</translation>
+    </message>
+    <message>
+        <location filename="../settings.py"/>
+        <source>Thao tác</source>
+        <translation>Action</translation>
     </message>
     <message>
         <location filename="../settings.py"/>
@@ -1752,6 +1777,74 @@
         <location filename="../settings.py"/>
         <source>đã kết nối</source>
         <translation>connected</translation>
+    </message>
+</context>
+<context>
+    <name>Shortcuts</name>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Chuyển lên cuộc trò chuyện phía trên</source>
+        <translation>Move to the conversation above</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Chuyển xuống cuộc trò chuyện phía dưới</source>
+        <translation>Move to the conversation below</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Chọn file để gửi</source>
+        <translation>Choose files to send</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Gửi file đã chép trong {file_manager}</source>
+        <translation>Send files copied in {file_manager}</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Mở Cài đặt</source>
+        <translation>Open Settings</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Mở cuộc trò chuyện thứ 1 đến 9 trong danh sách</source>
+        <translation>Open conversation 1 to 9 in the list</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Mở thư mục nhận</source>
+        <translation>Open receive folder</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Quay lại</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Thoát Teleport</source>
+        <translation>Quit Teleport</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Thử lại khi Teleport không khởi động được</source>
+        <translation>Retry when Teleport could not start</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Tìm máy mới</source>
+        <translation>Find devices</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>{first} đến {last}</source>
+        <translation>{first} to {last}</translation>
+    </message>
+    <message>
+        <location filename="../shortcuts.py"/>
+        <source>Đóng cửa sổ</source>
+        <translation>Close window</translation>
     </message>
 </context>
 <context>
@@ -1930,6 +2023,11 @@
         <location filename="../texts.py"/>
         <source>Tạm dừng nhận</source>
         <translation>Pause receiving</translation>
+    </message>
+    <message>
+        <location filename="../texts.py"/>
+        <source>trình quản lý file</source>
+        <translation>file manager</translation>
     </message>
     <message>
         <location filename="../texts.py"/>

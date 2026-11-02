@@ -38,6 +38,7 @@ from teleport.core.messages import (
     validate_file_name,
     validate_transfer_id,
 )
+from teleport.core.numbers import is_finite
 from teleport.core.resume_state import StateError, check_time, format_time, parse_time
 from teleport.core.transfer import Direction, TransferInfo
 
@@ -223,7 +224,7 @@ def entry_from_info(
     """
     if not isinstance(info, TransferInfo):
         raise HistoryError("info phải là TransferInfo")
-    if isinstance(wall_now, bool) or not isinstance(wall_now, int | float) or not math.isfinite(wall_now):
+    if isinstance(wall_now, bool) or not isinstance(wall_now, int | float) or not is_finite(wall_now):
         raise HistoryError("wall_now phải là số giây hữu hạn")
     try:
         finished_at = datetime.datetime.fromtimestamp(math.floor(wall_now), datetime.UTC)

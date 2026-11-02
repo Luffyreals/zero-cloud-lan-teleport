@@ -37,6 +37,11 @@ async def read_message(reader: asyncio.StreamReader, max_size: int = MAX_MESSAGE
 
 
 async def write_message(writer: asyncio.StreamWriter, msg: dict) -> None:
+    """Ghi một message rồi `drain()`.
+
+    Không tự đặt thời gian chờ: bên gọi bọc trong `asyncio.timeout` (`DRAIN_TIMEOUT`,
+    protocol.md mục 2.3), nếu không máy kia không đọc thì bên gửi treo mãi.
+    """
     writer.write(encode_message(msg))
     # drain() chờ khi bộ đệm gửi vượt ngưỡng: đây là backpressure ở mức nhỏ nhất.
     await writer.drain()

@@ -50,15 +50,29 @@ Alert trên bong bóng, không cướp tiêu điểm. Luồng không được m�
 `set_receive_dir_pending` cập nhật dòng “Lưu vào” của các panel. `is_pinned(id)`: luồng của máy đó
 đang ở cuối (chưa dựng → True), cho `ui.transfers` quyết định có bật hộp hỏi không.
 
-**Gửi**: nút “Gửi file” và Ctrl+O (`QAction` `WindowShortcut` trên `ChatView`, chỉ bật khi có máy được
-chọn; widget ẩn thì không chạy) phát `pick_files_requested(id)`. Thả file vào bất cứ đâu trong
-`ChatView` (luồng, màn rỗng, thanh dưới): chỉ URL file cục bộ (`send.local_paths`, không `stat`), đang
-kéo thì `_DropOverlay` viền nét đứt 2 px `accent_strong` và “Thả để gửi n file tới X”; thả →
-`send_files_requested(id, paths)`, chưa chọn máy → `drop_hint_requested(radar.drop_hint_text())`.
-`preview_drop(n)` đi cùng đường (ảnh chụp, test). Máy ngoại tuyến vẫn gửi được (lượt chờ kết nối, mvp
-mục 8); thanh dưới đổi câu gợi ý thành câu ngoại tuyến kèm icon `cloud_off`. Bong bóng tạm “Đang chuẩn
-bị…” (`add_pending` / `remove_pending`) hiện từ lúc chọn xong tới khi `transfers.send` trả về; không
-nằm trong `rows`, `row`, `active_count`.
+**Gửi**: nút “Gửi file” và phím Chọn file (`_pick_action`, `QAction` `WindowShortcut` trên `ChatView`
+từ `ui.shortcuts`, chỉ bật khi có máy được chọn; widget ẩn thì không chạy) phát
+`pick_files_requested(id)`. Thả file vào bất cứ đâu trong `ChatView` (luồng, màn rỗng, thanh dưới):
+chỉ URL file cục bộ (`send.local_paths`, không `stat`), đang kéo thì `_DropOverlay` viền nét đứt 2 px
+`accent_strong` và “Thả để gửi n file tới X”; thả → `drop_paths`: `send_files_requested(id, paths)`,
+chưa chọn máy → `drop_hint_requested(radar.drop_hint_text())`; phòng hờ: máy có trong model mà
+`radar.can_receive_files` sai thì bỏ qua (trả False). `preview_drop(n)` đi cùng đường (ảnh chụp,
+test). Máy ngoại tuyến vẫn gửi được (lượt chờ kết nối, mvp mục 8); thanh dưới đổi câu gợi ý thành câu
+ngoại tuyến kèm icon `cloud_off`. Bong bóng tạm “Đang chuẩn bị…” (`add_pending` / `remove_pending`)
+hiện từ lúc chọn xong tới khi `transfers.send` trả về; không nằm trong `rows`, `row`, `active_count`.
+
+**Dán file** (mvp F4): phím Dán (`_paste_action`, phím Dán chuẩn của hệ điều hành, StandardKey Paste;
+`WindowShortcut`, không tự lặp) → `paste_from_clipboard()`: `ChatView` không hiện → None (không làm
+gì; kể cả khi chưa ghép máy nào và khung phải là màn rỗng của cửa sổ: phím Dán im lặng), còn lại
+`paste_mime(_clipboard_mime())` trả `PasteOutcome`: chưa chọn máy → `drop_hint_requested` với
+`paste_no_device_text()`, NO_DEVICE (bất kể clipboard có gì); clipboard không phải toàn file cục bộ
+(`send.clipboard_paths`: chữ, ảnh, URL web, rỗng, None, hay lẫn URL web) → thông báo INFO
+`paste_not_files_text` kèm nút “Mở Cài đặt” phát `clipboard_settings_requested(id)` (`ui.app` mở Cài
+đặt ▸ Thiết bị tin cậy, tiêu điểm vào “Đồng bộ clipboard” của máy đó), NOT_FILES; còn lại
+`drop_paths` như thả file: SENT, hay BLOCKED khi máy không gửi tới được. Gửi ngay, không hỏi. Chỉ đọc
+URL của clipboard trên luồng Qt (không đọc chữ, ảnh, không `stat`). File “Cắt” trong File Explorer
+cũng chỉ được gửi một bản sao: Teleport không xóa hay di chuyển file nguồn. Ô nhập sửa được trong
+cửa sổ tự nhận `ShortcutOverride` cho Paste nên phím Dán ở đó vẫn dán chữ.
 
 **Clipboard** (mvp F8): `show_clipboard(device_id, ok=…, kind=…, size=…, preview=…,
 image_size=…)` (từ `ui.app`, sự kiện `RECEIVED` / `WRITE_FAILED` của `app.clipboard`) đặt một
@@ -86,9 +100,9 @@ sử: `saved_path` với thư mục nhận hiện tại làm `root`, nên mục 
 thư mục cha); không mở được (kể cả dự phòng `open_url`) → `info_bar` WARNING với thư mục cha.
 
 **Màn rỗng** (spec B3 mục 9b.21): máy đang chọn chưa có bong bóng nào và không đang nạp lịch sử →
-`empty_state` (icon `attach`, “Kéo file vào đây để gửi cho X”, “Hoặc bấm Gửi file ở dưới.”, không
-nút). Đang nạp (kể cả trong lúc chờ debounce) thì luồng trống, không chớp màn rỗng; lịch sử lỗi thì
-hiện luồng với dòng lỗi.
+`empty_state` (icon `attach`, “Kéo file vào đây để gửi cho X”, “Hoặc bấm Gửi file ở dưới, hay nhấn
+{phím Dán} để dán file đã chép.” (tên phím từ `ui.shortcuts`), không nút). Đang nạp (kể cả trong
+lúc chờ debounce) thì luồng trống, không chớp màn rỗng; lịch sử lỗi thì hiện luồng với dòng lỗi.
 
 **Bàn phím** (N12; spec B3 mục 9.10): widget nhận Tab của `ChatView` dựng trong `__init__` theo thứ tự
 các ô của `info_bar` → nhãn của `empty_state` → `threads` (điểm dừng Tab duy nhất của luồng,
@@ -105,7 +119,7 @@ hiện) hay `send_button`; Shift+Tab từ bong bóng ra widget trước `threads
 mDNS) chỉ hiện khi là giá trị đã biết (`texts.os_label`). Màu tự vẽ lấy từ `theme.tokens_for`. Chuỗi
 mới ở ngữ cảnh `"Chat"`, gọi lúc dùng, dựng lại khi `LanguageChange`. Không chạm đĩa trên luồng Qt.
 
-Seam cho test (biến cấp module, đọc lúc gọi): `open_url`, `_wall_now`.
+Seam cho test (biến cấp module, đọc lúc gọi): `open_url`, `_wall_now`, `_clipboard_mime`.
 """
 
 from __future__ import annotations
@@ -123,6 +137,7 @@ from PySide6.QtCore import (
     QCoreApplication,
     QEvent,
     QMetaMethod,
+    QMimeData,
     QObject,
     QPoint,
     QRectF,
@@ -133,15 +148,14 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleEvent,
-    QAction,
     QDesktopServices,
     QDragEnterEvent,
     QDragLeaveEvent,
     QDragMoveEvent,
     QDropEvent,
     QFocusEvent,
+    QGuiApplication,
     QKeyEvent,
-    QKeySequence,
     QPainter,
     QPaintEvent,
     QPen,
@@ -175,7 +189,7 @@ from teleport.app.transfers import (
 )
 from teleport.core.history import HistoryEntry
 from teleport.core.messages import ClipKind
-from teleport.ui import i18n, icons, send, shell, texts, theme
+from teleport.ui import i18n, icons, send, shell, shortcuts, texts, theme
 from teleport.ui.chat_bubbles import (
     BubbleContext,
     ClipboardNote,
@@ -188,8 +202,9 @@ from teleport.ui.chat_bubbles import (
 )
 from teleport.ui.conversations import failure_text
 from teleport.ui.offer import OfferBook
-from teleport.ui.radar import DeviceListModel, drop_hint_text
+from teleport.ui.radar import DeviceListModel, can_receive_files, drop_hint_text
 from teleport.ui.send import printable
+from teleport.ui.shortcuts import Shortcut
 from teleport.ui.widgets import (
     BubbleRow,
     ChatBubble,
@@ -205,6 +220,15 @@ from teleport.ui.widgets import (
 open_url = QDesktopServices.openUrl
 # Seam: giờ tường (giây epoch) cho `at` của lượt phiên và chữ dòng mốc; đọc lúc gọi.
 _wall_now: Callable[[], float] = time.time
+
+
+def _system_clipboard_mime() -> QMimeData | None:
+    clipboard = QGuiApplication.clipboard()
+    return None if clipboard is None else clipboard.mimeData()
+
+
+# Seam: nội dung clipboard khi dán file (test thay bằng hàm trả `QMimeData` tự dựng); đọc lúc gọi.
+_clipboard_mime: Callable[[], QMimeData | None] = _system_clipboard_mime
 
 HISTORY_DEBOUNCE_MS = 120
 MAX_THREAD_BUBBLES = 200
@@ -234,6 +258,46 @@ _SCROLL_FOCUS_REASONS = frozenset(
 )
 
 Bubble = TransferBubble | HistoryBubble | PendingBubble | ClipboardNote
+
+
+class PasteOutcome(StrEnum):
+    """Kết quả của `ChatView.paste_mime` (dán file đã chép)."""
+
+    SENT = "sent"  # đã phát `send_files_requested`
+    NO_DEVICE = "no_device"  # chưa chọn máy: gợi ý ghép đôi
+    NOT_FILES = "not_files"  # clipboard không phải file cục bộ: gợi ý “Đồng bộ clipboard”
+    BLOCKED = "blocked"  # máy đang chọn không gửi tới được
+
+
+def paste_no_device_text() -> str:
+    """Gợi ý khi dán file mà chưa chọn máy nào (mvp mục 8)."""
+    return texts.fill(
+        QCoreApplication.translate(
+            "Chat", "Ghép đôi một máy trước ({discover_key}), rồi nhấn {key} để gửi file đã chép."
+        ),
+        discover_key=shortcuts.key_text(Shortcut.DISCOVER),
+        key=shortcuts.key_text(Shortcut.PASTE_FILES),
+    )
+
+
+def paste_not_files_text(name: str) -> str:
+    """Gợi ý khi dán mà clipboard không phải file (mvp mục 8); `name` đã qua `texts.peer_label`."""
+    return texts.fill(
+        QCoreApplication.translate(
+            "Chat",
+            "{key} ở đây chỉ gửi file đã chép trong {file_manager}. Chữ và ảnh đi qua “Đồng bộ clipboard” "
+            "với {name} (Cài đặt ▸ Thiết bị tin cậy, cần bật ở cả hai máy): chép ở máy này rồi dán thẳng "
+            "ở máy kia.",
+        ),
+        key=shortcuts.key_text(Shortcut.PASTE_FILES),
+        file_manager=texts.file_manager_name(),
+        name=name,
+    )
+
+
+def paste_settings_text() -> str:
+    """Nút của gợi ý khi dán không phải file."""
+    return QCoreApplication.translate("Chat", "Mở Cài đặt")
 
 
 class HistoryState(StrEnum):
@@ -711,7 +775,7 @@ class ChatComposer(QWidget):
             "attach",
             QCoreApplication.translate("Chat", "Gửi file"),
             self,
-            shortcut=QKeySequence("Ctrl+O"),
+            shortcut=shortcuts.sequence(Shortcut.PICK_FILES),
             show_text=True,
         )
         self.send_button.setObjectName("chatSendButton")
@@ -815,9 +879,10 @@ class ChatView(QWidget):
 
     cancel_requested = Signal(object)  # TransferKey
     resend_requested = Signal(object)  # TransferKey
-    pick_files_requested = Signal(str)  # nút “Gửi file”, Ctrl+O
-    send_files_requested = Signal(str, list)  # thả vào luồng: device_id, list[Path]
-    drop_hint_requested = Signal(str)  # thả khi chưa chọn máy
+    pick_files_requested = Signal(str)  # nút “Gửi file”, phím Chọn file
+    send_files_requested = Signal(str, list)  # thả hay dán vào luồng: device_id, list[Path]
+    drop_hint_requested = Signal(str)  # thả hay dán khi chưa chọn máy
+    clipboard_settings_requested = Signal(str)  # “Mở Cài đặt” của gợi ý khi dán không phải file
     history_needed = Signal(str)  # mở luồng mà chưa có lịch sử (sau HISTORY_DEBOUNCE_MS)
     change_receive_dir_requested = Signal()  # nút “Đổi thư mục nhận” của bong bóng nhận (spec D4)
     retry_clipboard_requested = Signal(str)  # “Thử lại” của note clipboard: device_id (mvp F8)
@@ -912,11 +977,8 @@ class ChatView(QWidget):
         for first, second in pairwise(chain):
             QWidget.setTabOrder(first, second)
 
-        self._pick_action = QAction(self)
-        self._pick_action.setShortcut(QKeySequence("Ctrl+O"))
-        self._pick_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        self._pick_action.triggered.connect(self._on_pick_shortcut)
-        self.addAction(self._pick_action)
+        self._pick_action = shortcuts.make_action(self, Shortcut.PICK_FILES, self._on_pick_shortcut)
+        self._paste_action = shortcuts.make_action(self, Shortcut.PASTE_FILES, self._on_paste_shortcut)
 
         self._history_timer = QTimer(self)
         self._history_timer.setSingleShot(True)
@@ -1450,14 +1512,47 @@ class ChatView(QWidget):
         event.acceptProposedAction()
         self.drop_paths(paths)
 
-    def drop_paths(self, paths: list[Path]) -> None:
-        """Thả `paths` vào luồng đang mở (chưa chọn máy → gợi ý)."""
+    def drop_paths(self, paths: list[Path]) -> bool:
+        """Thả (hay dán) `paths` vào luồng đang mở; True nếu đã phát `send_files_requested`.
+
+        Chưa chọn máy → gợi ý thả; máy có trong model mà không gửi tới được → bỏ qua."""
         if not paths:
-            return
-        if self._device_id is None:
+            return False
+        device_id = self._device_id
+        if device_id is None:
             self.drop_hint_requested.emit(drop_hint_text())
-            return
-        self.send_files_requested.emit(self._device_id, list(paths))
+            return False
+        view = self._devices.device(device_id)
+        if view is not None and not can_receive_files(view):
+            return False
+        self.send_files_requested.emit(device_id, list(paths))
+        return True
+
+    # ---- Dán file -------------------------------------------------------------------------------
+
+    def paste_from_clipboard(self) -> PasteOutcome | None:
+        """Dán file đã chép (phím Dán): `ChatView` không hiện → None; còn lại `paste_mime` với nội
+        dung clipboard."""
+        if not self.isVisible():
+            return None
+        return self.paste_mime(_clipboard_mime())
+
+    def paste_mime(self, mime: QMimeData | None) -> PasteOutcome:
+        """Gửi các file trong `mime` tới máy đang chọn (xem docstring module, “Dán file”)."""
+        device_id = self._device_id
+        if device_id is None:
+            self.drop_hint_requested.emit(paste_no_device_text())
+            return PasteOutcome.NO_DEVICE
+        paths = send.clipboard_paths(mime)
+        if not paths:
+            self.show_notice(
+                lambda: paste_not_files_text(self._peer(device_id, None)),
+                paste_settings_text,
+                lambda: self.clipboard_settings_requested.emit(device_id),
+                level=InfoLevel.INFO,
+            )
+            return PasteOutcome.NOT_FILES
+        return PasteOutcome.SENT if self.drop_paths(paths) else PasteOutcome.BLOCKED
 
     # ---- Chữ ------------------------------------------------------------------------------------
 
@@ -1466,7 +1561,7 @@ class ChatView(QWidget):
         self.setAccessibleName(t("Chat", "Lượt gửi nhận"))
         self.placeholder.setText(t("Chat", "Chọn một máy ở cột trái để xem file đã gửi và nhận."))
         self.composer.send_button.set_label(t("Chat", "Gửi file"))
-        self._pick_action.setText(t("Chat", "Gửi file"))
+        shortcuts.retranslate_actions(self)
         self.threads.setAccessibleName(t("Chat", "Lượt gửi nhận"))
         self._set_new_count(self._new_count(), force=True)
         self._update_header()
@@ -1660,7 +1755,7 @@ class ChatView(QWidget):
         self._update_page()
 
     def _update_page(self) -> None:
-        """Chọn trang của `threads`, bật/tắt nút gửi, Ctrl+O, điểm dừng Tab của luồng."""
+        """Chọn trang của `threads`, bật/tắt nút gửi, phím Chọn file, điểm dừng Tab của luồng."""
         device_id = self._device_id
         thread = self._current_thread()
         if device_id is None or thread is None:
@@ -1720,7 +1815,10 @@ class ChatView(QWidget):
         self.empty_state.set_content(
             "attach",
             texts.fill(t("Chat", "Kéo file vào đây để gửi cho {name}"), name=name),
-            t("Chat", "Hoặc bấm Gửi file ở dưới."),
+            texts.fill(
+                t("Chat", "Hoặc bấm Gửi file ở dưới, hay nhấn {key} để dán file đã chép."),
+                key=shortcuts.key_text(Shortcut.PASTE_FILES),
+            ),
         )
         self.empty_state.setAccessibleName(
             f"{self.empty_state.title_label.text()}. {self.empty_state.text_label.text()}"
@@ -1748,7 +1846,7 @@ class ChatView(QWidget):
             parts.append(printable(str(view.addresses[0])))
         return " · ".join(parts), Presence.ONLINE if online else Presence.OFFLINE
 
-    # -- Nút “↓ Mới”, Ctrl+O, Tab -----------------------------------------------------------------
+    # -- Nút “↓ Mới”, phím tắt, Tab ----------------------------------------------------------------
 
     def _new_count(self) -> int:
         thread = self._current_thread()
@@ -1783,6 +1881,9 @@ class ChatView(QWidget):
     def _on_pick_shortcut(self) -> None:
         if self._device_id is not None and self.isVisible():
             self.pick_files_requested.emit(self._device_id)
+
+    def _on_paste_shortcut(self) -> None:
+        self.paste_from_clipboard()
 
     def _focus_after_thread(self) -> QWidget | None:
         if not self.new_button.isHidden() and self.new_button.isVisible():

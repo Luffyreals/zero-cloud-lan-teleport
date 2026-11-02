@@ -7,8 +7,9 @@ giữ luồng chat `ui.chat.ChatView` (`view`, đặt vào `MainWindow.transfers
 `NodeHost.call` / `submit` (không bao giờ gọi `Node`
 từ thread Qt). Nối dây (spec B3 mục 5): `conversations.current_changed` → `view.set_device` (gọi một
 lần lúc dựng với máy đang chọn), `conversations.open_requested` → `view.focus_composer`; nút “Gửi
-file” / Ctrl+O của luồng → `pick_and_send`, thả vào luồng → `request_send`, thả khi chưa chọn máy →
-thông báo; “Gửi lại” → `resend`; `view.history_needed` → đọc lịch sử.
+file” / phím Chọn file (`ui.shortcuts`) của luồng → `pick_and_send`, thả hay dán file vào luồng →
+`request_send`, thả hay dán khi chưa chọn máy → thông báo; “Gửi lại” → `resend`;
+`view.history_needed` → đọc lịch sử.
 
 **Host** (`attach`): mỗi `NodeHost` mới (lần đầu, “Bắt đầu”, “Thử lại”) → xóa mọi luồng, bong bóng
 (kể cả tạm), đường dẫn nhớ cho “Gửi lại” và thông báo, đóng hộp hỏi, bỏ việc “ghép rồi gửi” đang
@@ -56,8 +57,9 @@ khi node của host hiện tại đã `started`; chưa thì nhớ máy đó và 
 (nếu vẫn là máy đang mở). Kết quả → `view.load_history` (luồng tự bỏ kết quả tới muộn); host cũ hay
 sau `close_all` → bỏ; lỗi → WARNING (tên loại lỗi) và `view.history_failed`.
 
-**Gửi** (`request_send(device_id, paths)`, từ kéo thả, nút “Gửi file” / Ctrl+O của luồng, menu
-“Gửi file…” của cột trái, hay menu con “Gửi file…” của khay qua `pick_and_send`): thread Qt không `stat`
+**Gửi** (`request_send(device_id, paths)`, từ kéo thả, dán file đã chép, nút “Gửi file” / phím Chọn
+file của luồng, menu “Gửi file…” của cột trái, hay menu con “Gửi file…” của khay qua `pick_and_send`):
+thread Qt không `stat`
 file người dùng (D7); việc kiểm file do `transfers.send` làm trên `DiskExecutor` của node.
 1. Danh sách rỗng → bỏ qua; `send.selection_error` (quá `MAX_OFFER_FILES` file, trùng) → thông báo.
 2. Thiết bị chưa ghép đôi → “ghép rồi gửi” (từ B2 giao diện không còn đường nào gửi tới máy chưa ghép

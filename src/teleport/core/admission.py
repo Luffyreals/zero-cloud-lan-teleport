@@ -59,6 +59,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from teleport.core.numbers import is_finite
+
 # Đọc lúc dùng để test chỉnh được bằng monkeypatch (protocol §2.3). Tốc độ tính bằng
 # lần bắt tay mỗi giây, burst bằng số lần.
 MAX_OPENING_PER_IP = 4  # pool chung: kết nối đang mở đầu (chưa biết loại) mỗi IP
@@ -496,7 +498,7 @@ class AdmissionGate:
         """Kiểm `now` rồi đẩy đồng hồ của gate; gọi sau khi đã kiểm mọi tham số khác."""
         if isinstance(now, bool) or not isinstance(now, int | float):
             raise TypeError("now phải là số giây (đồng hồ monotonic)")
-        if not math.isfinite(now):
+        if not is_finite(now):
             raise ValueError("now phải là số hữu hạn")
         if self._last_now is not None and now < self._last_now:
             raise ValueError("now không được nhỏ hơn lần gọi trước")

@@ -497,7 +497,11 @@ def test_pairing_module_does_not_import_time_or_secrets():
     forbidden = {"time", "secrets", "random", "os", "asyncio", "socket", "cryptography", "ssl"}
     assert not roots & forbidden, f"core/pairing.py không được import: {roots & forbidden}"
     teleport_imports = {name for name in imported if name.split(".")[0] == "teleport"}
-    assert teleport_imports <= {"teleport.core.messages", "teleport.core.pairing_code"}
+    assert teleport_imports <= {
+        "teleport.core.messages",
+        "teleport.core.numbers",
+        "teleport.core.pairing_code",
+    }
 
 
 # --- DeviceCert ---------------------------------------------------------------------------------

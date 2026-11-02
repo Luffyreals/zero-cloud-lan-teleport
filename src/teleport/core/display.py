@@ -29,6 +29,7 @@ import math
 import unicodedata
 
 from teleport.core.filenames import INVISIBLE_CHARS
+from teleport.core.numbers import is_finite
 
 DISPLAY_NAME_WIDTH = 32  # mvp mục 7.2: tên dài hơn bị cắt, tổng cả `…` vẫn ≤ 32 cột
 FILE_NAME_WIDTH = 48  # mvp mục 7.3: tên file dài hơn bị cắt ở giữa, tổng cả `…` vẫn ≤ 48 cột
@@ -183,7 +184,7 @@ def format_duration(seconds: float) -> str:
     """
     if isinstance(seconds, bool) or not isinstance(seconds, int | float):
         raise TypeError("seconds phải là số")
-    if not math.isfinite(seconds):
+    if not is_finite(seconds):
         raise ValueError("seconds phải là số hữu hạn")
     total = max(0, math.floor(seconds + 0.5))
     if total < 60:
