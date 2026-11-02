@@ -16,12 +16,14 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtensionOID
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from support import windows_dacl
 
 from teleport.trust import store
 from teleport.trust.identity import (
     CERT_FILE,
     IDENTITY_LOCK,
     KEY_FILE,
+    KEY_STAGING_DIR,
     IdentityError,
     InvalidCertificate,
     PeerCert,
@@ -156,6 +158,47 @@ def test_interrupted_create_is_completed(tmp_path):
     (tmp_path / CERT_FILE).rename(tmp_path / (CERT_FILE + ".tmp"))
     assert load_or_create_identity(tmp_path) == original
     assert not (tmp_path / (CERT_FILE + ".tmp")).exists()
+
+
+def test_interrupted_create_removes_leftover_key_staging(tmp_path):
+    """Bị ngắt sau khi đổi tên khóa, trước khi xóa thư mục tạm của khóa: lần sau dọn nốt."""
+    original = load_or_create_identity(tmp_path)
+    (tmp_path / CERT_FILE).rename(tmp_path / (CERT_FILE + ".tmp"))
+    (tmp_path / KEY_STAGING_DIR).mkdir()
+    assert load_or_create_identity(tmp_path) == original
+    assert not (tmp_path / KEY_STAGING_DIR).exists()
+
+
+def test_leftover_key_staging_does_not_block_first_create(tmp_path):
+    """Bị ngắt khi khóa còn trong thư mục tạm: lần sau tạo lại thư mục đó và tạo danh tính mới."""
+    staging = tmp_path / KEY_STAGING_DIR
+    staging.mkdir()
+    (staging / (KEY_FILE + ".tmp")).write_bytes(b"old")
+    load_or_create_identity(tmp_path)
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted([CERT_FILE, KEY_FILE, IDENTITY_LOCK])
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32" or sys.version_info < (3, 12, 4),
+    reason="DACL được bảo vệ của os.mkdir(0o700) chỉ có trên Windows, từ Python 3.12.4",
+)
+def test_key_does_not_inherit_shared_config_dir_acl_on_windows(tmp_path):
+    # Thư mục cấu hình dùng chung (--config-dir): cấp quyền đọc cho BUILTIN\Users (BU).
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    icacls = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "icacls.exe")
+    subprocess.run(
+        [icacls, str(cfg), "/grant", "*S-1-5-32-545:(OI)(CI)(RX)"], check=True, capture_output=True
+    )
+    identity = load_or_create_identity(cfg)
+    # Đối chứng: chứng chỉ công khai kế thừa ACL của thư mục, kể cả ACE vừa cấp.
+    cert_protected, cert_sddl = windows_dacl(identity.cert_path)
+    assert not cert_protected
+    assert ";;;BU)" in cert_sddl
+    key_protected, key_sddl = windows_dacl(identity.key_path)
+    assert key_protected, key_sddl
+    assert ";;;BU)" not in key_sddl
+    assert ";;;OW)" in key_sddl  # OWNER RIGHTS: chủ vẫn đọc được
 
 
 def test_cert_with_only_key_tmp_is_error_not_completed(tmp_path):
