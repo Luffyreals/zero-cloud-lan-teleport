@@ -3,6 +3,10 @@
 - `local_paths(urls)`: đường dẫn của các URL file cục bộ (kéo thả, “Gửi file…”), giữ thứ tự, bỏ
   URL khác. Không chạm đĩa: thread Qt không `stat` file người dùng (spec-hackathon D7); file không
   có, thư mục, không đọc được… do `transfers.send` báo bằng `SourceError`. File `.lnk` gửi nguyên.
+- `clipboard_paths(mime)`: đường dẫn của file đã chép (phím Dán trong luồng chat, `ui.shortcuts`),
+  luật tất cả hoặc không: chỉ khi mọi URL là file cục bộ; có URL nào khác (https…) hay không có URL
+  → `[]`. Chỉ đọc `urls()`, không đọc chữ hay ảnh, không chạm đĩa. Thả file vẫn theo `local_paths`
+  (bỏ URL lạ).
 - `selection_error(paths)`: lỗi nhận ra được mà không chạm đĩa (spec-hackathon mục 9.9): quá
   `MAX_OFFER_FILES` file, một file chọn hai lần (so `os.path.normcase(os.path.abspath(...))`, như
   `app.sources.prepare_sources`). Đếm trước, trùng sau.
@@ -26,7 +30,7 @@ import unicodedata
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, QUrl
+from PySide6.QtCore import QCoreApplication, QMimeData, QUrl
 
 from teleport.app import sources as app_sources
 from teleport.app.sources import SourceError, SourceErrorKind
@@ -57,6 +61,16 @@ def local_paths(urls: Iterable[QUrl]) -> list[Path]:
         if local:
             paths.append(Path(local))
     return paths
+
+
+def clipboard_paths(mime: QMimeData | None) -> list[Path]:
+    """Đường dẫn của các file đã chép trong `mime` (clipboard), giữ thứ tự; không phải toàn URL file
+    cục bộ → `[]`."""
+    if mime is None or not mime.hasUrls():
+        return []
+    urls = mime.urls()
+    paths = local_paths(urls)
+    return paths if urls and len(paths) == len(urls) else []
 
 
 def selection_error(paths: Sequence[Path]) -> str | None:

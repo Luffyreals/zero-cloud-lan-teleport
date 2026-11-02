@@ -21,6 +21,7 @@ import datetime
 import os
 import pathlib
 import re
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,7 +60,10 @@ OFFLINE_HINT = (
 )  # 9.9 (thắng câu ở mục 5)
 DRAG_HINT = "kéo file vào đây"  # “hoặc kéo file vào đây” (mục 5, 8.1)
 EMPTY_TITLE = "Kéo file vào đây để gửi cho {name}"  # 9b.21
-EMPTY_TEXT = "Hoặc bấm Gửi file ở dưới."
+# Spec “phím tắt và dán file” mục 4 (S15): {key} là NativeText của phím Paste đầu (macOS: ⌘V).
+EMPTY_TEXT = "Hoặc bấm Gửi file ở dưới, hay nhấn {key} để dán file đã chép.".format(
+    key="⌘V" if sys.platform == "darwin" else "Ctrl+V"
+)
 NEW_NAME = "Có {n} lượt mới. Bấm để cuộn xuống cuối"
 LIST_DESCRIPTION = (
     "Mũi tên để chọn máy, Tab để đi qua từng máy, Enter để mở cuộc trò chuyện, phím Menu để mở thao tác."
