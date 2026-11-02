@@ -1066,6 +1066,21 @@ def test_devices_empty_state_requests_discover(ui):
     assert EMPTY_TITLE not in joined(devices)
 
 
+def test_devices_empty_state_shows_not_paired_illustration(ui):
+    """Spec G6 tiêu chí 8: Cài đặt › Thiết bị rỗng (`trustedEmpty`) có minh họa NOT_PAIRED."""
+    from teleport.ui.illustrations import Scene
+    from teleport.ui.widgets import EmptyState
+
+    page = ui.page
+    devices = open_section(page, "DEVICES")
+    ui.devices([])
+    empty = page.findChild(EmptyState, "trustedEmpty")
+    assert empty is not None and empty.isVisibleTo(devices)
+    assert empty.illustration.isVisibleTo(devices)
+    assert empty.illustration.scene is Scene.NOT_PAIRED
+    assert not empty.icon_badge.isVisibleTo(devices)
+
+
 def test_no_check_updates_control(ui):
     """Ô “Đồng bộ clipboard” đã có từ D5 (test ở `test_clipboard_ui.py`); “Kiểm tra cập nhật” vẫn chưa."""
     page = ui.page

@@ -29,7 +29,8 @@ mẫu mọi thành phần của `ui/widgets.py` trong `QScrollArea`, kể cả `
 `page` (RUNNING, mở một trang mẫu có
 `PageHeader` ở chỗ SETTINGS, vì DISCOVER đã là trang thật), `discover` (trang “Tìm máy mới”: 4 máy
 chưa ghép đôi, một tên dài bị cắt “…”, 2 máy đã ghép đôi), `discover_list` (9 máy: tự sang dạng danh
-sách), `conversations` (spec B2 mục 7: 4 máy đã ghép đôi ở cột trái — đang gửi 62% và đang chọn,
+sách), `discover_list_empty` (spec G6: không máy nào, dạng danh sách chọn sẵn: minh họa “không thấy
+máy” trên câu rỗng), `conversations` (spec B2 mục 7: 4 máy đã ghép đôi ở cột trái — đang gửi 62% và đang chọn,
 trực tuyến đã nhận một file, ngoại tuyến đã gửi hôm qua, trực tuyến bị từ chối kết nối — và luồng
 của PC-Nha có bong bóng đang gửi ở khung phải), `conversations_drop` (như trên, đang kéo 3 file qua
 hàng đang chọn).
@@ -38,7 +39,8 @@ Trang “Cài đặt” (spec D2): `settings_general`, `settings_appearance` (sp
 dương chọn sẵn; ảnh sáng và tối dựng bằng `ui_theme` nên chỉ thấy lựa chọn, không thấy màu đại
 dương), `settings_privacy_hidden` (máy đang ẩn),
 `settings_devices` (bốn máy đã ghép đôi: đã kết nối, trong mạng, ngoại tuyến, tên lạ dài; một máy
-chưa ghép đôi không hiện), `settings_advanced` (kèm thông báo xuất log xong),
+chưa ghép đôi không hiện), `settings_devices_empty` (spec G6: chưa ghép đôi máy nào, minh họa
+“chưa ghép máy”), `settings_advanced` (kèm thông báo xuất log xong),
 `settings_receive_dir_unavailable` (thư mục nhận đã lưu không mở được).
 
 Luồng chat (spec B3, `ui.chat`): `chat` (luồng của PC-Nha: nhận xong “Đã lưu” + “Hiện trong thư mục”, gửi lỗi
@@ -54,7 +56,7 @@ nhóm ô, thanh đếm ngược ngắn, chữ màu cảnh báo). Hai hộp đư�
 `surface` cỡ cảnh để ảnh dễ duyệt; không kiểm góc.
 
 Giờ cố định bằng seam `_wall_now` của `ui.conversations`, `ui.transfers` (`NOW`) và `ui.chat` (cảnh
-luồng chat đổi giờ giữa các bong bóng qua `_CLOCK`). Tổng 30 cảnh × 2 chế độ × 2 cỡ = 120 ảnh.
+luồng chat đổi giờ giữa các bong bóng qua `_CLOCK`). Tổng 32 cảnh × 2 chế độ × 2 cỡ = 128 ảnh.
 """
 
 from __future__ import annotations
@@ -488,6 +490,13 @@ def scene_discover_list(qtbot) -> QWidget:
     return _discover_window(qtbot, views)
 
 
+def scene_discover_list_empty(qtbot) -> QWidget:
+    """Spec G6: trang “Tìm máy mới” không có máy nào, dạng danh sách: minh họa NO_DEVICES trên câu rỗng."""
+    window = _discover_window(qtbot, [])
+    window.discover.set_view_preference("list")
+    return window
+
+
 def _at(day: int, hour: int, minute: int) -> float:
     return datetime.datetime(2026, 10, day, hour, minute).timestamp()
 
@@ -660,6 +669,13 @@ def scene_settings_devices(qtbot) -> QWidget:
         _peer("Laptop-Lan"),  # chưa ghép đôi: không hiện
     ]
     return _settings_window(qtbot, Section.DEVICES, views=views)
+
+
+def scene_settings_devices_empty(qtbot) -> QWidget:
+    """Spec G6: chưa ghép đôi máy nào (một máy lạ trong mạng không tính): `trustedEmpty` có minh họa."""
+    from teleport.ui.settings import Section
+
+    return _settings_window(qtbot, Section.DEVICES, views=[_peer("Laptop-Lan")])
 
 
 def scene_settings_advanced(qtbot) -> QWidget:
@@ -965,12 +981,14 @@ SCENES: dict[str, tuple[Callable[..., QWidget], bool, str | None]] = {
     "page": (scene_page, True, "surface"),
     "discover": (scene_discover, True, "surface"),
     "discover_list": (scene_discover_list, True, "surface"),
+    "discover_list_empty": (scene_discover_list_empty, True, "surface"),
     "conversations": (scene_conversations, True, "sidebar"),
     "conversations_drop": (scene_conversations_drop, True, "sidebar"),
     "settings_general": (scene_settings_general, True, "surface"),
     "settings_appearance": (scene_settings_appearance, True, "surface"),
     "settings_privacy_hidden": (scene_settings_privacy_hidden, True, "surface"),
     "settings_devices": (scene_settings_devices, True, "surface"),
+    "settings_devices_empty": (scene_settings_devices_empty, True, "surface"),
     "settings_advanced": (scene_settings_advanced, True, "surface"),
     "settings_receive_dir_unavailable": (scene_settings_receive_dir_unavailable, True, "surface"),
     "chat": (scene_chat, True, "sidebar"),

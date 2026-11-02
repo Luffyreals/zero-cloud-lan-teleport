@@ -736,6 +736,56 @@ def test_l7_discover_page_adds_action_button(window, tmp_path):
     assert window.current_page is Page.DISCOVER
 
 
+def test_l7_empty_state_shows_not_paired_illustration(window, tmp_path):
+    """Spec G6 tiêu chí 8: khung phải (`streamEmpty`) có minh họa NOT_PAIRED thay vòng icon."""
+    from teleport.ui.illustrations import Scene
+
+    running(window, tmp_path)
+    window.set_transfer_summary(False, 0)
+    state = window.empty_state
+    assert state.objectName() == "streamEmpty"
+    assert visible(state.illustration, window)
+    assert state.illustration.scene is Scene.NOT_PAIRED
+    assert not visible(state.icon_badge, window)
+
+
+def test_l3_running_without_devices_with_illustration_does_not_grow_window(window, qtbot, tmp_path):
+    """Spec G6 mục 7: RUNNING 0 máy (`streamEmpty` có minh họa) ở 720x460 không vượt `MIN_SIZE`."""
+    show_window(window, qtbot, MIN_W, MIN_H)
+    running(window, tmp_path)
+    window.set_transfer_summary(False, 0)
+    settle()
+    assert window.stream_pane.currentWidget() is window.empty_state
+    assert visible(window.empty_state.illustration, window)
+    _assert_fits(window)
+
+
+def test_l3_empty_chat_with_illustration_does_not_grow_window(window, qtbot, make_ctl, tmp_path):
+    """Spec G6 mục 7: luồng chat rỗng (`chatEmpty`, minh họa NO_TRANSFERS) ở 720x460 không vượt `MIN_SIZE`."""
+    from teleport.ui.illustrations import Scene
+    from teleport.ui.widgets import EmptyState
+
+    ctl = make_ctl(window)
+    show_window(window, qtbot, MIN_W, MIN_H)
+    running(window, tmp_path)
+    window.devices.reset([dview("PC-Nha", paired=True, connected=True)])
+    ctl.view.set_device_names({PEER_ID: "PC-Nha"})
+    settle()
+    selected = device_id("PC-Nha")
+    assert ctl.view.device_id() == selected, "tiền đề: máy đã ghép đôi duy nhất tự được chọn"
+    from teleport.ui.chat import HistoryState
+
+    # Lịch sử chỉ nhận khi luồng đang LOADING (sau `HISTORY_DEBOUNCE_MS`); không node nên tự nạp rỗng.
+    qtbot.waitUntil(lambda: ctl.view.thread_for(selected).history_state is HistoryState.LOADING, timeout=3000)
+    ctl.view.load_history(selected, [])
+    settle()
+    chat_empty = window.findChild(EmptyState, "chatEmpty")
+    assert chat_empty is not None and visible(chat_empty, window)
+    assert visible(chat_empty.illustration, window)
+    assert chat_empty.illustration.scene is Scene.NO_TRANSFERS
+    _assert_fits(window)
+
+
 # =================================================================================================
 # L8 — Thẻ “máy này”
 # =================================================================================================

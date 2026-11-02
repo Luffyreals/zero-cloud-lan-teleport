@@ -49,10 +49,6 @@ hoạt ảnh lặp tối đa `MAX_LOOP_MS` (5 s). Các hằng là biến cấp m
   signal của hoạt ảnh một closure giữ chặt đích do Python sở hữu. `finish_all()` đưa mọi hoạt ảnh
   tới giá trị cuối (dùng trước `grab()`), `running_count()` đếm số đang chạy (test N3).
 
-**Ngoại lệ: radar** (`ui/discover.py`) còn tự chạy `QVariantAnimation` và chỉ hỏi
-`animations_enabled()`: nằm ngoài `should_animate` và sổ đăng ký, `finish_all` không dừng nó. Chuyển
-sang `Loop` ở G6.
-
 **Seam test** (cấp module, đọc lúc gọi): `_instant` / `_force_instant(on)` (chế độ tức thì, không chạm
 `animations_enabled`), `_reset_for_tests()` (xóa cache GNOME, tắt chế độ tức thì),
 `_stop_all_for_tests()` (dừng mọi hoạt ảnh và `Loop` không gọi `on_finished` / `on_stop`, trả
