@@ -2404,6 +2404,7 @@ class TransferEngine:
         self._register(conn)
         t.conn = conn
         t.open_wait_at = None  # `data_open` đã tới: hết chờ
+        t.resume_at = None  # `data_open` tới muộn sau khi `tick` đã hẹn `resume` mới: hủy hẹn
         self._emit(ReceiveBlocks(peer.device_id, data_id, t.key.transfer_id, t.file_index, t.size_f))
 
     def _incoming_send(self, peer: _Peer, t: _Send, data_id: int, msg: DataOpen, now: float) -> None:
@@ -2592,10 +2593,7 @@ class TransferEngine:
             self._fail(t, CancelReason.ERROR, FailureDetail.PROTOCOL, now)
             return
         if isinstance(memo, _DoneMemo) and _manifest_digest(msg) != memo.manifest_digest:
-            # Lượt đã xong: không còn gì để hủy, chỉ trả `cancel{error}` và nhớ bia mộ đè lên.
-            self._send(peer, Cancel(transfer_id, CancelReason.ERROR))
-            stone = _Tombstone(CancelReason.ERROR, False, now, self._order())
-            self._remember(peer, Direction.RECEIVE, transfer_id, stone)
+            self._fail_done(peer, transfer_id, now)
             return
         if isinstance(memo, _RejectMemo):
             self._send(peer, memo.reject)
@@ -2659,6 +2657,13 @@ class TransferEngine:
         if peer.running is None and peer.offers and peer.offers[0].phase is _Phase.QUEUED:
             self._check_space(peer, peer.offers[0])
 
+    def _fail_done(self, peer: _Peer, transfer_id: str, now: float) -> None:
+        """Lỗi khi so với `offer` của lượt nhận đã xong: không còn gì để hủy, chỉ trả
+        `cancel{error}` và nhớ bia mộ đè lên (protocol §6.3)."""
+        self._send(peer, Cancel(transfer_id, CancelReason.ERROR))
+        stone = _Tombstone(CancelReason.ERROR, False, now, self._order())
+        self._remember(peer, Direction.RECEIVE, transfer_id, stone)
+
     def _on_complete(self, peer: _Peer, msg: Complete, now: float) -> None:
         """`complete` (protocol §6.3, cột “Nhận”, luật 1, 5, 6, 7; §4.4)."""
         transfer_id, index = msg.transfer_id, msg.file_index
@@ -2674,6 +2679,8 @@ class TransferEngine:
         if isinstance(memo, _DoneMemo):
             if index < memo.n_files:
                 self._send(peer, Verified(transfer_id, index))
+            else:
+                self._fail_done(peer, transfer_id, now)  # `file_index` không nhỏ hơn số file
             return
         if not isinstance(t, _Recv):
             self._send(peer, Cancel(transfer_id, CancelReason.UNKNOWN_TRANSFER))

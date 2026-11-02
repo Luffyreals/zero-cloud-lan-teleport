@@ -500,7 +500,7 @@ Cài đặt ở `teleport.core.discovery` (bản ghi, lọc, theo dõi thiết b
   - Khóa TXT là chữ thường, so chính xác (`ID` không phải `id`). Khóa trùng thì lấy lần đầu; khóa lạ bị bỏ qua; khóa thiếu `=` (không có giá trị) là sai.
   - `id` kiểm như `device_id` và **phải bằng nhãn của tên instance**; `os` kiểm như `os`; `name` như `name` (mục 3.3), dài ≤ 200 byte UTF-8 và giải mã UTF-8 chặt; `proto` là số nguyên thập phân ASCII 1…2⁵³−1, không có số 0 ở đầu. `proto` khác phiên bản của máy này vẫn hợp lệ (so phiên bản ở `hello`, mục 9).
   - Cổng SRV phải là 1–65535.
-  - Địa chỉ: chỉ IPv4; bỏ loopback, link-local, multicast, reserved (`240.0.0.0/4`, `255.255.255.255`) và `0.0.0.0/8`; bỏ trùng, sắp tăng dần, giữ tối đa 16. Không còn địa chỉ nào → bỏ bản ghi.
+  - Địa chỉ: chỉ IPv4; bỏ loopback, link-local, multicast, reserved (`240.0.0.0/4`, `255.255.255.255`) và `0.0.0.0/8`; bỏ địa chỉ Internet công khai (`IPv4Address.is_global`, cùng luật với `is_saveable` ở mục 6.2) để một máy trong LAN không khiến node tự gọi ra Internet (mvp N9) ✅; bỏ trùng, sắp tăng dần, giữ tối đa 16. Không còn địa chỉ nào → bỏ bản ghi.
 - Thoát app thì gửi gói “goodbye” để máy khác xóa thiết bị ngay (mvp N1).
 - Mọi bản ghi được đăng ký với **TTL 60 s**, thay cho TTL mặc định 75 phút của mDNS (RFC 6762).
 - **Kiểm còn sống:** python-zeroconf nâng TTL của bản ghi PTR *nhận được* lên tối thiểu 1125 s (goodbye TTL 0 thì không), nên máy mất mạng đột ngột hoặc đi ngủ không biến mất khi PTR hết hạn. Bên nhận vì vậy **resolve lại SRV/TXT/A mỗi 15 s** cho từng thiết bị (bộ hẹn giờ chạy mỗi 5 s, chờ tối đa 3 s mỗi lần resolve). Khi SRV/TXT/A còn trong cache, resolve trả ngay từ cache; hết hạn thì zeroconf gửi truy vấn mới ngay.
