@@ -226,7 +226,7 @@ def test_installing_translator_rebuilds_every_chat_string_and_removing_restores(
     for name, text in before.items():
         assert text, f"tiền đề: {name} phải có chữ"
         assert PREFIX not in text, name
-    assert bubbles["received"].open_button.isVisibleTo(view), "tiền đề: “Mở thư mục” hiện"
+    assert bubbles["received"].open_button.isVisibleTo(view), "tiền đề: “Hiện trong thư mục” hiện"
     assert bubbles["failed"].resend_button.isVisibleTo(view), "tiền đề: “Gửi lại” hiện"
 
     QCoreApplication.installTranslator(translator)

@@ -175,11 +175,13 @@ Luồng thoát thật (`_quit_now`): dừng `address_timer`, đóng hộp hỏi 
 sao), đóng `SingleInstance`, `join(JOIN_TIMEOUT)`; thread node vẫn sống thì ghi log,
 `logging.shutdown()`, `os._exit(1)`.
 
-**Bóng thoại khay**: bấm vào bóng thoại (`Tray.message_clicked(folder)`) có thư mục (“Đã nhận…”)
-→ mở thư mục bằng seam cấp module `open_url` (mặc định `QDesktopServices.openUrl`, đọc lúc gọi);
-không có thư mục → đưa cửa sổ chính và mọi hộp đang hiện của app lên trước. “Mở thư mục” ở chân
-“Lưu vào” của cửa sổ chính (`open_receive_dir_requested`) mở thư mục nhận theo cùng cách; mở không
-được thì chỉ ghi log, không hiện hộp nào. Bóng thoại “có yêu cầu
+**Bóng thoại khay**: bấm vào bóng thoại (`Tray.message_clicked(folder)`): `shell.Reveal` (“Đã
+nhận…”, gộp ở `ui.notify`) → `shell.show_in_folder(files, root, folder=…)`, Explorer chọn sẵn file vừa
+nhận, dự phòng mở thư mục cha bằng seam cấp module `open_url` (mặc định `QDesktopServices.openUrl`, đọc
+lúc gọi); `Path` → mở thư mục đó bằng `open_url`; None → đưa cửa sổ chính và mọi hộp đang hiện của
+app lên trước. “Mở thư mục” ở chân “Lưu vào” của cửa sổ chính (`open_receive_dir_requested`) mở thư
+mục nhận bằng `open_url`; mở không được (cả ở đây lẫn bóng thoại) thì chỉ ghi log, không hiện hộp
+nào. Bóng thoại “có yêu cầu
 ghép đôi” (qua `PairingController(window_visible=...)`) và “có file đang chờ” (qua
 `TransfersController(app_active=...)`) chỉ hiện khi app không được dùng (`GuiApp._app_active()`:
 không cửa sổ nào của app đang active).
@@ -287,6 +289,7 @@ from teleport.ui import (
     placement,
     receive_dir,
     send,
+    shell,
     texts,
     theme,
 )
@@ -937,8 +940,16 @@ class GuiApp(QObject):
         return ui_transfers.default_app_active()
 
     def _on_message_clicked(self, folder: object) -> None:
-        """Bấm bóng thoại khay: có thư mục thì mở nó, không thì đưa cửa sổ và các hộp lên trước."""
+        """Bấm bóng thoại khay: `Reveal` thì hiện các file trong thư mục, `Path` thì mở thư mục, không thì
+        đưa cửa sổ và các hộp lên trước."""
         if self._quitting:
+            return
+        if isinstance(folder, shell.Reveal):
+            shown = shell.show_in_folder(
+                folder.files, folder.root, open_url=lambda url: open_url(url), folder=folder.folder
+            )
+            if shown is False:
+                log.warning("không mở được thư mục nhận")
             return
         if isinstance(folder, Path):
             if open_url(QUrl.fromLocalFile(str(folder))) is False:

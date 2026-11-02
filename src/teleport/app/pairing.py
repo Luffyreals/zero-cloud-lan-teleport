@@ -764,7 +764,8 @@ class PairingService:
                     async with asyncio.timeout_at(send_deadline):
                         await conn.send(action.message)
                 except (ConnectionLostError, TimeoutError) as e:
-                    # Lần receive kế tiếp sẽ ra ConnectionLost; vẫn làm tiếp các hành động sau.
+                    # Các lần receive sau trả nốt message đã đệm rồi ra ConnectionLost; vẫn làm tiếp
+                    # các hành động sau.
                     log.debug("ghép đôi: gửi %s thất bại (%s)", action.message.TYPE, type(e).__name__)
                     if isinstance(action.message, PairConfirm):
                         # "Đã GỬI" là đã ghi xong vào kết nối (protocol mục 5.1): máy kia có thể

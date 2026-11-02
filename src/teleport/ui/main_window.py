@@ -433,6 +433,7 @@ class MainWindow(QMainWindow):
         self._port: int | None = None
         self._has_content = False  # luồng chat có bong bóng hay thanh thông báo (`set_transfer_summary`)
         self._active = 0
+        self._progress: int | None = None  # % tổng trên tiêu đề cửa sổ (`set_progress`)
         self._has_paired = False  # danh sách cuộc trò chuyện có máy (đã ghép đôi)
         self._scroll_target: QWidget | None = None  # widget chờ được cuộn tới (`_on_focus_changed`)
         self._compact_applied: bool | None = None  # dạng cột trái đã áp (`_apply_compact`)
@@ -800,6 +801,11 @@ class MainWindow(QMainWindow):
         self._update_stream()
         self._keep_footer_last()
 
+    def set_progress(self, percent: int | None) -> None:
+        """% tổng trên tiêu đề cửa sổ (`texts.window_title`; None: chỉ tên app). `ui.transfers` gọi."""
+        self._progress = percent
+        self.setWindowTitle(texts.window_title(percent))
+
     # ---- Trang -------------------------------------------------------------------------------
 
     @property
@@ -935,7 +941,7 @@ class MainWindow(QMainWindow):
 
     def retranslate(self) -> None:
         """Đặt lại mọi chữ theo ngôn ngữ hiện tại và trạng thái hiện tại."""
-        self.setWindowTitle(texts.APP_NAME)
+        self.setWindowTitle(texts.window_title(self._progress))
         self.title_label.setText(texts.APP_NAME)
         self.title_label.setAccessibleName(QCoreApplication.translate("MainWindow", "Tên ứng dụng"))
         self.brand_label.setText(texts.APP_NAME)

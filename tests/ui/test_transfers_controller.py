@@ -750,8 +750,10 @@ def _record_tray(monkeypatch) -> list:
 
 def test_transfers_set_receive_dir_used_as_tray_folder_fallback(env, monkeypatch):
     """Spec-b1b 2.5: `set_receive_dir` thay `host.options.receive_dir` làm thư mục của bóng thoại
-    “Đã nhận…” khi không có `FileDone.path`, và đặt thư mục cho hộp hỏi."""
+    “Đã nhận…” khi không có `FileDone.path`, và đặt thư mục cho hộp hỏi. Spec-f4 mục 2.5: thư mục đó
+    nằm trong `shell.Reveal` (không file nào → `root` = `folder` = thư mục nhận)."""
     from teleport.ui.send import printable
+    from teleport.ui.shell import Reveal
 
     shown = _record_tray(monkeypatch)
     new_dir = env.tmp / "doi-sang"
@@ -762,8 +764,10 @@ def test_transfers_set_receive_dir_used_as_tray_folder_fallback(env, monkeypatch
     env.ctl.on_transfer(offer(key))
     assert printable(str(new_dir)) in _offer_box_text(env, key)
     env.ctl.on_transfer(finished(key))
-    done = [(t, f) for t, f in shown if t == RECEIVED_ONE.format(name="video.mp4", peer=PEER)]
-    assert done == [(RECEIVED_ONE.format(name="video.mp4", peer=PEER), new_dir)], shown
+    done = [f for t, f in shown if t == RECEIVED_ONE.format(name="video.mp4", peer=PEER)]
+    assert len(done) == 1, shown
+    assert isinstance(done[0], Reveal)
+    assert (tuple(done[0].files), done[0].root, done[0].folder) == ((), new_dir, new_dir)
 
 
 def test_attach_with_saved_choice_has_no_receive_dir_until_set(env, monkeypatch):

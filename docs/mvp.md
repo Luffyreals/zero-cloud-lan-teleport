@@ -205,6 +205,7 @@ Mỗi tính năng có các user story (US) và tiêu chí chấp nhận (AC). M�
   - Menu khay: Mở Teleport, Gửi file…, Tạm dừng nhận, Thoát.
   - Tùy chọn khởi động cùng hệ điều hành (bật nếu người dùng đồng ý ở lần chạy đầu).
   - Khi chạy nền không truyền gì: CPU ~0%, RAM < 150MB.
+  - Khi đang truyền, tiêu đề cửa sổ (ví dụ “60% · ZCL Teleport”) và tooltip khay hiện % tổng của các lượt đang chạy. Số đổi theo mốc và không dồn dập, để không làm phiền trình đọc màn hình (N12).
 
 ### F10. Cài đặt
 - **AC:** có đủ các mục sau, đổi xong có hiệu lực ngay:
@@ -248,7 +249,7 @@ Máy A: kéo video.mp4 (8GB) thả vào “PC-Nha”
           └─ người dùng xác nhận trùng ở cả hai máy ──► đã ghép đôi
 Máy B: hộp thoại “Laptop-Minh muốn gửi video.mp4 (8,0 GB)” ──► Nhận
 Máy A + B: thanh tiến độ, tốc độ, thời gian còn lại
-Máy B: thông báo “Đã nhận video.mp4” ──► bấm để mở thư mục
+Máy B: thông báo “Đã nhận video.mp4” ──► bấm để hiện file trong thư mục
 ```
 
 ### 6.2. Rớt mạng giữa chừng
@@ -278,7 +279,7 @@ Máy A: Ctrl+C một đoạn văn ──► (< 0,5s) ──► Máy B: Ctrl+V d�
 │ │(PC)● PC-Nha            │ ├─────────────────────────────────────────────┤
 │ │      Đang gửi · 62%    │ │            — Đã ghép đôi · 28/10 —          │
 │ └────────────────────────┘ │ ┌ anh-cuoi.zip · 1,8 GB ┐                   │
-│ (Lap)● MacBook-Lan         │ │ ✓ Đã lưu · Mở thư mục │                   │
+│ (Lap)● MacBook-Lan         │ │ ✓ Đã lưu · Hiện tr…  │                   │
 │        Đã nhận bao-cao.pdf │ └───────────────────────┘                   │
 │ (Lap)○ Ubuntu-Lab          │              ┌ phim-4k.mkv · 18 GB      ┐  │
 │        Ngoại tuyến·hôm qua │              │███████░░░░ 62%       ✕   │  │
@@ -405,7 +406,7 @@ Luồng của mỗi máy (khung bên phải của cửa sổ chính, mục 7.1) 
 - Dòng 1: biểu tượng loại file, “*video.mp4*” (nhiều file: “*3* file”), cỡ (“*8,0 GB*”; mục lịch sử thêm giờ: “*8,0 GB* · 21:03”) và nút “Hủy” khi chưa xong. Không ghi tên máy kia (luồng đã thuộc một máy).
 - Dòng 2: thanh tiến độ, chỉ khi lượt chưa kết thúc.
 - Dòng 3: nhãn ngắn (“Đang gửi”, “Đang nhận”, “Đang chờ”, “Đang kiểm tra”, “Đang nối lại…”, “Đã lưu” (nhận xong), “Đã gửi” (gửi xong), “Đã từ chối”, “Đã hủy”, “Lỗi”) và một dòng phụ: khi đang truyền “*45,0*% · *120 MB/s* · còn *2 phút*” (phần trăm làm tròn xuống, chưa xong thì không hiện 100%; chưa đo được tốc độ thì bỏ phần tốc độ và thay “còn …” bằng “đang tính thời gian còn lại”; đang nối lại hay chờ dữ liệu thì câu ở mục 8); khi chờ thì câu chờ như bản CLI ở bảng dưới (máy nhận: “Đang chờ bạn trả lời” hoặc “Đang xếp hàng”); khi xong “Đã kiểm tra toàn vẹn” (bên nhận mà file phải lưu tên khác vì đã có file trùng tên: “Đã lưu thành *video-demo (1).mp4* · Đã kiểm tra toàn vẹn”; từ hai file đổi tên: “Đã lưu *2* file với tên mới · Đã kiểm tra toàn vẹn”); khi dừng vì lỗi thì câu của mục 8. Lỗi có viền màu nhấn đỏ kèm biểu tượng cảnh báo (không chỉ bằng màu); xong có dấu ✓.
-- Dòng 4: “Mở thư mục” (bên nhận đã xong); “Gửi lại” (bên gửi kết thúc không thành, trừ khi hủy ghép đôi; chỉ trong lần mở app này, bấm được một lần).
+- Dòng 4: “Hiện trong thư mục” (bên nhận đã xong; mở thư mục và chọn sẵn file vừa nhận); “Gửi lại” (bên gửi kết thúc không thành, trừ khi hủy ghép đôi; chỉ trong lần mở app này, bấm được một lần).
 - Vừa chọn file xong mà lượt chưa bắt đầu: bong bóng tạm “Đang chuẩn bị…”.
 - Lời mời nhận file đang chờ trả lời: bong bóng có viền màu nhấn, nhãn “Đang chờ” và “Đang chờ bạn trả lời”, danh sách tên file (khi nhiều file), “Lưu vào: …” kèm “Đổi…”, ô “Luôn nhận từ thiết bị này” và hai nút **Từ chối** / **Nhận**; không có nút “Hủy” (từ chối là cách duy nhất để không nhận). Trả lời xong (ở đây hay ở hộp) thì các nút biến mất và bong bóng đi tiếp như lượt thường.
 
@@ -586,7 +587,7 @@ Dung lượng hiển thị cho người dùng tính theo hệ nhị phân, như 
 | Giao diện: “Gửi file…” trong menu khay | Menu con liệt kê các máy đã ghép đôi (máy ngoại tuyến: “*PC-Nha* (ngoại tuyến)”); chọn một máy thì hiện cửa sổ ở cuộc trò chuyện đó và mở hộp chọn file. Chưa ghép đôi máy nào: mục mờ “Chưa ghép đôi với máy nào” và mục “Tìm máy mới…” | Chọn máy rồi chọn file |
 | Giao diện, máy nhận: thư mục nhận không còn hoặc không dùng được khi nhận một lượt | “Không nhận được lượt gửi từ *Laptop-Minh* vì thư mục nhận *D:\Downloads\Teleport* không còn hoặc không dùng được, và Teleport không tạo lại được (có thể thư mục chứa nó đã bị xóa, hoặc ổ đã bị rút ra). Hãy kiểm tra lại rồi nhờ gửi lại.” | Nút “Đổi thư mục nhận” |
 | Giao diện: có file gửi tới | Hộp hỏi ở mục 7.3; khi không có cửa sổ Teleport nào đang được dùng (cửa sổ ẩn, thu nhỏ hay bị cửa sổ khác che) thì thêm bóng thoại ở khay: “Có file đang chờ bạn nhận.” | Nút “Nhận”, “Từ chối” trong hộp hỏi. Bấm vào bóng thoại: hiện cửa sổ chính và đưa hộp hỏi lên trước |
-| Giao diện: nhận xong một lượt | Bóng thoại ở khay: “Đã nhận *3* file từ *Laptop-Minh*.” (một file: “Đã nhận *video.mp4* từ *Laptop-Minh*.”, với tên file đã lưu trên máy này, ví dụ *video (1).mp4* khi thư mục nhận đã có file cùng tên) | Bấm vào bóng thoại: mở thư mục chứa file. Nút “Mở thư mục” trên thẻ của lượt |
+| Giao diện: nhận xong một lượt | Bóng thoại ở khay: “Đã nhận *3* file từ *Laptop-Minh*.” (một file: “Đã nhận *video.mp4* từ *Laptop-Minh*.”, với tên file đã lưu trên máy này, ví dụ *video (1).mp4* khi thư mục nhận đã có file cùng tên) | Nhiều lượt xong cách nhau vài giây gộp thành một bóng thoại (“Đã nhận *4* file từ *2* máy.” khi từ nhiều máy). Không báo khi người dùng đang mở đúng cuộc trò chuyện đó. Bấm vào bóng thoại: mở thư mục và chọn sẵn file vừa nhận (hệ không hỗ trợ: mở thư mục chứa file). Nút “Hiện trong thư mục” trên thẻ của lượt |
 | Giao diện: địa chỉ của máy này (để nhập IP thủ công ở máy kia) | Khi Teleport đang chạy: dòng chọn được “Địa chỉ: *192.168.1.5*” (thêm “:*cổng*” khi không phải cổng mặc định, [protocol.md](protocol.md) mục 2.1); máy có nhiều địa chỉ thì hiện địa chỉ đầu, các địa chỉ còn lại ở chú thích khi trỏ chuột: “Các địa chỉ khác của máy này: …”. Cập nhật khi đổi mạng (đọc lại mỗi 10 giây). Không đọc được địa chỉ nào thì không hiện dòng này | — |
 | Giao diện: chưa có lượt truyền nào trong lần mở app này | “Kéo file vào một thiết bị để gửi” (ở khung lượt truyền) | — |
 | Giao diện: thả file vào chỗ không có máy ở cột trái | “Thả file lên một thiết bị để gửi.” | — |
