@@ -360,7 +360,12 @@ Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.m
 
 ### 5.5. Lịch tới buổi demo hackathon
 
-Phạm vi và tiêu chí H1–H5: [mvp.md](mvp.md) mục 4.1. Buổi demo hết tuần 4 của hackathon, khoảng 08/11/2026. Từ 01/11 không còn mốc đóng băng: việc hoàn thiện sản phẩm theo mục 5.2 (Giai đoạn 4–5) tiếp tục trên `main` cả trước buổi demo; lịch này chỉ giữ các ngày cần hai máy thật và các bản zip dùng để kiểm H1–H5.
+Phạm vi và tiêu chí H1–H5: [mvp.md](mvp.md) mục 4.1. Buổi demo hết tuần 4 của hackathon, khoảng 08/11/2026. Lịch này giữ các ngày cần hai máy thật và các bản zip dùng để kiểm H1–H5.
+
+**Đóng băng từ 03/11 tới hết buổi demo** (quyết định 03/11, theo review Checkpoint 3, thay cho quyết định bỏ đóng băng ngày 01/11):
+- `main` chỉ nhận bản sửa lỗi: lỗi tìm được trên máy thật, lỗi chặn một tiêu chí H, hoặc sửa tài liệu cho khớp bản demo. Tính năng mới và việc hoàn thiện theo mục 5.2 (Giai đoạn 4–5) làm ở nhánh riêng, merge sau buổi demo.
+- Mỗi PR sửa dưới khoảng 300 dòng `src/`. Trước khi merge, người dùng tự viết 3 dòng trong mô tả PR: sửa gì, dữ liệu từ máy khác đi vào đâu, test nào chứng minh. Chưa có 3 dòng đó thì chưa merge.
+- Không thêm file test mới chỉ để theo một thay đổi giao diện.
 
 Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 08/11, nên mọi việc cần hai máy thật dồn vào các ngày đó.
 
@@ -368,7 +373,7 @@ Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 0
 |---|---|---|
 | 30/10–01/11 | Sửa những lỗi giao diện người xem sẽ thấy (thẻ lượt truyền, tiến độ, bấm vào thiết bị), ghi lỗi không bắt được vào log; build zip thử từ `main` bằng CI; kiểm tay hai node trên một máy bằng mã nguồn | Bản sửa đã merge vào `main`; có zip thử từ CI; kiểm tay hai node trên một máy đạt |
 | 02/11 | **Kiểm sớm** trên hai máy thật bằng zip thử, đúng mạng sẽ dùng ngày 08/11: mDNS (H1), sơ bộ H2–H5, đo tốc độ để chọn cỡ file | Lần chạy đầu của zip trên máy mượn chưa cài Python chạy được; có danh sách lỗi trên máy thật |
-| 03/11–04/11 | Sửa lỗi tìm được ngày 02/11, tiếp tục hoàn thiện sản phẩm | Lỗi của ngày 02/11 đã sửa và merge vào `main` |
+| 03/11–04/11 | Bắt đầu đóng băng; sửa lỗi tìm được ngày 02/11; cập nhật README và mvp mục 4.1 theo đúng bản sẽ demo | Lỗi của ngày 02/11 đã sửa và merge vào `main`; README và mvp mục 4.1 khớp `main` |
 | 05/11 | Build zip ứng viên RC1 từ `main` bằng CI, `pytest -m frozen`; kiểm tay trên exe của RC1; chạy `soat-tai-lieu`; chuẩn bị hai máy và mạng | Có zip ứng viên |
 | 06/11 | **Kiểm H1–H5 chính thức** trên RC1 | H1–H5 có kết quả trong [benchmark.md](benchmark.md) mục 6 |
 | 07/11 | Có sửa thì build RC2 và kiểm lại các H bị ảnh hưởng; **18:00 chốt zip**; quay video dự phòng; tập lại, có một lần đi đường CLI và một lần không có mDNS (nhập IP) | Zip chốt, commit của zip ghi ở [benchmark.md](benchmark.md) mục 6 |
