@@ -109,6 +109,7 @@ markers = [
     "integration: cần socket thật trên 127.0.0.1 (bỏ qua bằng -m 'not integration')",
     "slow: chạy quá 1 giây (vòng lặp nhanh: -m 'not slow'; CI vẫn chạy đủ)",
     "gui: test tầng ui, cần PySide6 và chạy với QT_QPA_PLATFORM=offscreen",
+    "real_notify_delay: không ép hằng gộp bóng thoại “Đã nhận…” của teleport.ui.notify về 0 (fixture tự động notify_immediate của tests/ui/conftest.py)",
     "mdns: mDNS thật trên 127.0.0.1 (bỏ qua bằng TELEPORT_SKIP_MDNS=1; khi chạy song song dồn vào một worker)",
     "frozen: chạy bản build PyInstaller trỏ bởi TELEPORT_FROZEN_EXE (CLI) / TELEPORT_FROZEN_GUI_EXE (GUI), hoặc bộ cài trỏ bởi TELEPORT_INSTALLER_EXE; không có thì bỏ qua",
 ]

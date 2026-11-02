@@ -641,7 +641,7 @@ def _history(device, i: int, direction: str, name: str, result: str, days_ago: i
 
 def scene_conversation(qtbot):
     """Luồng chat (spec B3) của máy đang chọn có đủ loại bong bóng: lịch sử (xong, lỗi, đã từ chối, hôm
-    qua và một năm trước), nhận xong (“Mở thư mục”), gửi lỗi có “Gửi lại”, đang gửi (tốc độ, còn …),
+    qua và một năm trước), nhận xong (“Hiện trong thư mục”), gửi lỗi có “Gửi lại”, đang gửi (tốc độ, còn …),
     đang chờ, bong bóng tạm “Đang chuẩn bị…”, dòng mốc, nút “↓ Mới” và thông báo có nút hành động."""
     from teleport.app.transfers import FileDone, TransferProgress, TransferStatusChanged
     from teleport.ui import texts

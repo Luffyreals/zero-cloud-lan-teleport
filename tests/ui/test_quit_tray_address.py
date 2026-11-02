@@ -1171,7 +1171,11 @@ def test_received_message_shows_even_when_app_active(ctl_env):
     assert any(m.startswith("Đã nhận") for m in ns.messages), ns.messages
 
 
-def test_received_message_carries_parent_folder_of_saved_file(ctl_env, tmp_path):
+def test_received_message_carries_reveal_of_saved_file(ctl_env, tmp_path):
+    """Spec-f4 mục 2.4/2.5: bóng thoại mang `shell.Reveal` (file đã lưu + thư mục nhận), không còn `Path`
+    thư mục cha."""
+    from teleport.ui.shell import Reveal
+
     ns = ctl_env(app_active=lambda: True)
     key = tkey("receive")
     saved = tmp_path / "nhan" / "con" / "a (1).txt"
@@ -1180,7 +1184,9 @@ def test_received_message_carries_parent_folder_of_saved_file(ctl_env, tmp_path)
     ns.ctl.on_transfer(file_done(key, saved, "a.txt"))
     ns.ctl.on_transfer(finished(key, "done", names=("a.txt",)))
     [folder] = [f for m, f in zip(ns.messages, ns.folders, strict=True) if m.startswith("Đã nhận")]
-    assert folder == saved.parent
+    assert isinstance(folder, Reveal)
+    assert tuple(folder.files) == (saved,)
+    assert folder.root == tmp_path / "nhan"
 
 
 @pytest.mark.parametrize("active", [True, False])
