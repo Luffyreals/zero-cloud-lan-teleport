@@ -699,6 +699,46 @@ def test_labels_do_not_take_focus(window, qtbot, tmp_path):
         assert label.focusPolicy() == Qt.FocusPolicy.NoFocus, label.objectName()
 
 
+def test_welcome_illustration_above_tagline_and_centered(window, qtbot, tmp_path):
+    """Spec G6 mục 3: `FirstRunForm.illustration` (cảnh WELCOME) căn giữa, ngay trên câu giá trị,
+    khoảng cách theo `theme.SPACING`, rộng ≤ 240 (mục 7)."""
+    from teleport.ui import theme
+    from teleport.ui.illustrations import Illustration, Scene
+
+    show_window(window, qtbot)
+    window.show_welcome("Laptop-Minh", tmp_path / "d", autostart=True)
+    settle()
+    f = form(window)
+    ill = window.first_run.illustration
+    assert isinstance(ill, Illustration)
+    assert ill.scene is Scene.WELCOME
+    assert visible(ill, window)
+    assert ill.width() <= 240
+    root = f.root
+    gap = top_in(f.tagline, root) - (top_in(ill, root) + ill.height())
+    assert gap in theme.SPACING, f"khoảng cách tới câu giá trị {gap} px không thuộc theme.SPACING"
+    center = ill.mapTo(root, QPoint(0, 0)).x() + ill.width() / 2
+    assert abs(center - root.width() / 2) <= 2, f"minh họa lệch ngang: tâm {center}, form rộng {root.width()}"
+
+
+def test_welcome_illustration_is_decorative_and_not_in_tab_chain(window, qtbot, tmp_path):
+    show_window(window, qtbot, active=True)
+    window.show_welcome("Laptop-Minh", tmp_path / "d", autostart=True)
+    f = form(window)
+    qtbot.waitUntil(lambda: focus() is f.edit, timeout=3000)
+    ill = window.first_run.illustration
+    assert ill.focusPolicy() == Qt.FocusPolicy.NoFocus
+    assert ill.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+    assert ill.accessibleName() == "" and ill.accessibleDescription() == ""
+    seen = []
+    for key in (Qt.Key.Key_Tab,) * 6 + (Qt.Key.Key_Backtab,) * 6:
+        QTest.keyClick(focus(), key)
+        settle()
+        seen.append(focus())
+    assert ill not in seen
+    assert f.start in seen, "đối chứng: Tab vẫn tới “Bắt đầu”"
+
+
 def test_accessible_names_and_descriptions(window, qtbot, tmp_path):
     from teleport.app.autostart import AutostartState
     from teleport.ui.settings import autostart_state_hint

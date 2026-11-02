@@ -31,8 +31,9 @@ Fixture chính:
 - `motion_instant` (tự dùng): `ui/motion.py` ở chế độ tức thì (`_force_instant(True)`): mọi helper
   chuyển động gán ngay giá trị cuối, test không chờ hoạt ảnh (spec-g1 mục 3). Dọn:
   `_stop_all_for_tests()` (dừng mọi hoạt ảnh và `Loop`, không gọi callback) rồi `_reset_for_tests()`
-  (xóa cache GNOME, tắt chế độ tức thì). Không chạm `animations_enabled()` (fixture `waves` của
-  `test_discover.py` vẫn vá hàm đó cho radar).
+  (xóa cache GNOME, tắt chế độ tức thì). Không chạm `animations_enabled()`: test cần “hệ điều hành
+  tắt hiệu ứng” xin `real_motion` rồi vá lại hàm đó (như fixture `waves` của `test_discover.py`, nay
+  sóng radar là một `motion.Loop`, spec G6).
 - `real_motion`: test xin khi cần hoạt ảnh chạy thật: tắt chế độ tức thì và vá
   `motion.animations_enabled` thành `lambda: True`. Chỉ kiểm giá trị cuối, không giá trị giữa chừng.
 """
