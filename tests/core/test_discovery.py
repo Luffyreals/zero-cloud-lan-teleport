@@ -590,6 +590,29 @@ def test_filter_addresses_caps_at_16_smallest():
     assert result == tuple(f"10.0.0.{i}" for i in range(1, 17))
 
 
+def test_filter_addresses_lan_only_drops_public_before_cap():
+    """`lan_only` bỏ địa chỉ Internet công khai trước khi cắt còn 16, nên địa chỉ công khai (sắp
+    trước theo số) không đẩy mất địa chỉ LAN; mặc định vẫn giữ (địa chỉ của máy này)."""
+    public = [f"8.8.{i}.1" for i in range(MAX_ADDRESSES)]
+    lan = ["192.168.1.20", "10.0.0.1", "100.64.0.1", "192.0.2.10"]
+    assert filter_addresses([*public, *lan], lan_only=True) == (
+        "10.0.0.1",
+        "100.64.0.1",
+        "192.0.2.10",
+        "192.168.1.20",
+    )
+    assert filter_addresses(public) == tuple(public)
+
+
+def test_parse_service_drops_public_addresses():
+    """Protocol mục 8: máy trong LAN không khiến node tự gọi ra Internet (mvp N9) qua mDNS."""
+    assert parse_service(resolved(addresses=("8.8.8.8", "192.168.1.20", "1.1.1.1"))).addresses == (
+        "192.168.1.20",
+    )
+    with pytest.raises(DiscoveryRecordError):
+        parse_service(resolved(addresses=("8.8.8.8", "1.1.1.1")))
+
+
 @pytest.mark.slow
 @settings(max_examples=300, deadline=None)
 @given(

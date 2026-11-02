@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 import unicodedata
 from collections.abc import Callable
 
@@ -270,8 +271,18 @@ def menu_quit() -> str:
 
 
 def retry() -> str:
-    """Nút “Thử lại” (phím tắt F5 ở cửa sổ chính)."""
+    """Nút “Thử lại” (phím tắt ở `ui.shortcuts`)."""
     return QCoreApplication.translate("Texts", "Thử lại")
+
+
+def file_manager_name() -> str:
+    """Tên trình quản lý file của hệ điều hành đang chạy (câu về dán file đã chép): Windows
+    “File Explorer”, macOS “Finder” (tên riêng, không dịch), khác “trình quản lý file”."""
+    if sys.platform.startswith("win"):
+        return "File Explorer"
+    if sys.platform == "darwin":
+        return "Finder"
+    return QCoreApplication.translate("Texts", "trình quản lý file")
 
 
 # ---- Nhận file -----------------------------------------------------------------------------

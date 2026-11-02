@@ -13,6 +13,8 @@ from __future__ import annotations
 import math
 from enum import StrEnum
 
+from teleport.core.numbers import is_finite
+
 PING_INTERVAL = 10.0  # protocol §2.3: không gửi gì trong 10 s → gửi ping
 DEAD_AFTER = 30.0  # protocol §2.3: không nhận byte nào trong 30 s → mất kết nối
 
@@ -29,7 +31,7 @@ def _check_seconds(name: str, value: object) -> float:
     """Tham số thời gian: số hữu hạn > 0 (giây), không phải bool."""
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise TypeError(f"{name} phải là số giây")
-    if not math.isfinite(value) or value <= 0:
+    if not is_finite(value) or value <= 0:
         raise ValueError(f"{name} phải là số hữu hạn > 0")
     return float(value)
 
@@ -38,7 +40,7 @@ def _check_now(now: object, last: float | None) -> float:
     """`now` phải là số hữu hạn và không nhỏ hơn lần gọi trước của cùng đối tượng."""
     if isinstance(now, bool) or not isinstance(now, int | float):
         raise TypeError("now phải là số giây (đồng hồ monotonic)")
-    if not math.isfinite(now):
+    if not is_finite(now):
         raise ValueError("now phải là số hữu hạn")
     if last is not None and now < last:
         raise ValueError("now không được nhỏ hơn lần gọi trước")

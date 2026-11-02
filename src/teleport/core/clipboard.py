@@ -260,7 +260,9 @@ class _Partial:
     progress_at: float  # `now` lúc nhận mảnh hợp lệ gần nhất (mảnh 0: bằng `started_at`)
     next_index: int = 0
     received: int = 0
-    chunks: list[bytes] = field(default_factory=list)
+    # Ráp vào một bytearray, không giữ list mảnh: mỗi `bytes` tốn thêm vài chục byte, nên
+    # mảnh rất nhỏ làm RAM thật vượt xa `reserved_bytes` (= `total`).
+    buf: bytearray = field(default_factory=bytearray)
     hasher: hashlib._Hash = field(default_factory=hashlib.sha256)
 
 
@@ -524,7 +526,7 @@ class ClipAssembler:
         if partial.received + len(chunk) > partial.total:
             events.append(self._drop(device_id, dev, DropReason.SIZE_MISMATCH))
             return
-        partial.chunks.append(chunk)
+        partial.buf += chunk
         partial.hasher.update(chunk)
         partial.received += len(chunk)
         partial.progress_at = now
@@ -537,7 +539,7 @@ class ClipAssembler:
         if partial.hasher.hexdigest() != partial.sha256:
             events.append(self._drop(device_id, dev, DropReason.HASH_MISMATCH))
             return
-        raw = b"".join(partial.chunks)
+        raw = bytes(partial.buf)
         if partial.kind == ClipKind.PNG and not raw.startswith(PNG_SIGNATURE):
             events.append(self._drop(device_id, dev, DropReason.INVALID_CONTENT))
             return

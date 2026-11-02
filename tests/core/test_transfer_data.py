@@ -738,6 +738,23 @@ def test_receiver_server_wait_ends_when_matching_data_open_arrives(tx):
     assert tx.sent(r.tick(now=t0 + DATA_OPEN_WAIT + DATA_RETRY_MAX), Resume) == []
 
 
+def test_receiver_server_late_data_open_cancels_scheduled_resume(tx):
+    """`data_open` khớp `resume` mới nhất tới sau hạn chờ (`tick` đã hẹn `resume` mới) vẫn được nhận,
+    và hẹn đó bị hủy: kết nối đang nhận khối tốt không bị cắt, không có `resume` mới."""
+    r = tx.Recv(tx.entries(3))
+    r.accept()
+    t0 = r.now
+    assert tx.sent(r.tick(now=t0 + DATA_OPEN_WAIT), Resume) == []  # chỉ hẹn `resume` mới
+    assert r.e.next_wakeup() is not None
+    did, acts = r.open()
+    assert tx.one(acts, ReceiveBlocks).data_id == did
+    r.feed(did, 0, [0])
+    assert r.e.next_wakeup() is None
+    acts = r.tick(now=t0 + DATA_OPEN_WAIT + DATA_RETRY_MAX)
+    assert tx.of(acts, CloseData) == []
+    assert tx.sent(acts, Resume) == []
+
+
 def test_receiver_server_data_open_at_wait_deadline_without_tick_is_served(tx):
     """Spec 3.14: hạn chót chỉ xử lý trong `tick`; `data_open` tới đúng lúc hạn, chưa `tick` → nhận."""
     r = tx.Recv(tx.entries(3))

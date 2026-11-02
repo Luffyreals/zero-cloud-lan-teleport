@@ -17,11 +17,11 @@ riêng tư (cho máy chưa ghép đôi thấy máy này, xóa toàn bộ lịch 
 ghép đôi một `TrustedDeviceRow`: “Hỏi trước khi nhận”, “Đồng bộ clipboard” (objectName
 `syncClipboard`, mặc định tắt; clip chỉ đi khi cả hai máy cùng bật, mvp F8), “Hủy ghép
 đôi…”; không máy nào thì `EmptyState` + “Tìm máy mới”) · Truyền file (giới hạn tốc độ gửi, ngưỡng
-dọn phần nhận dở) · Nâng cao (xuất log, phiên bản, giấy phép, “Thông báo bên thứ ba” khi có file
-`THIRD-PARTY-NOTICES.txt` cạnh `sys.executable`). Chưa có “Kiểm tra cập nhật” (GĐ6). Hàng thư mục nhận: chữ
-theo ba trạng thái của `ui.receive_dir` (đang đổi sang / thư mục nhận / thư mục đã lưu hỏng), “Mở”
-(chỉ khi có thư mục nhận) và “Đổi…” (ẩn tới `set_change_available(True)`; `ui.app` bật và nối vào
-`ReceiveDirController.choose`).
+dọn phần nhận dở) · Nâng cao (xuất log, bảng “Phím tắt” chỉ để xem, phiên bản, giấy phép, “Thông báo
+bên thứ ba” khi có file `THIRD-PARTY-NOTICES.txt` cạnh `sys.executable`). Chưa có “Kiểm tra cập
+nhật” (GĐ6). Hàng thư mục nhận: chữ theo ba trạng thái của `ui.receive_dir` (đang đổi sang / thư mục
+nhận / thư mục đã lưu hỏng), “Mở” (chỉ khi có thư mục nhận) và “Đổi…” (ẩn tới
+`set_change_available(True)`; `ui.app` bật và nối vào `ReceiveDirController.choose`).
 
 **Hàng** (`widgets.SettingsRow`, `QFrame[surface="raised"]`, bo `RADIUS_CARD`): nhãn đậm vừa, gợi ý
 màu dịu xuống dòng, control bên phải; hàng hẹp tới mức cột chữ còn dưới `widgets.LABEL_MIN_WIDTH` thì control
@@ -49,8 +49,20 @@ chữ thuần, tooltip qua `widgets.safe_tooltip`; tên trợ năng của hàng 
 
 **Bàn phím** (mvp N12): Tab: Quay lại → `nav` → thanh thông báo (khi hiện) → control của mục đang mở
 (mục Giao diện: trong mỗi nhóm chỉ phần tử đang chọn nhận Tab, mũi tên đi giữa các phần tử) → hàng
-thiết bị → nút màn rỗng. Lên/Xuống trong `nav` đổi mục; trang hiện thì tiêu điểm vào `nav`
-(`setFocusProxy`). Không hoạt ảnh.
+thiết bị → nút màn rỗng; mục Nâng cao: “Xuất log…” → bảng Phím tắt → “Thông báo bên thứ ba”. Lên/Xuống
+trong `nav` đổi mục; trang hiện thì tiêu điểm vào `nav` (`setFocusProxy`). Không hoạt ảnh.
+`show_section(section, device_id, focus=…)`: mục Thiết bị tin cậy với `device_id` → tiêu điểm vào ô
+“Hỏi trước khi nhận” của máy đó, hay ô “Đồng bộ clipboard” khi `focus="clipboard"` và trang đã có ảnh
+chụp cài đặt (gợi ý khi dán không phải file ở luồng chat, qua `ui.app`).
+
+**Bảng Phím tắt** (`shortcuts_table`, `_ShortcutTable`, `QTableWidget` objectName `shortcutsTable`,
+nằm dưới gợi ý của hàng `shortcutsRow`): hai cột “Thao tác” | “Phím” từ `ui.shortcuts.table_rows()`
+(không chép danh sách phím ra đây), không sửa được, chọn một hàng, không tô xen kẽ, không tiêu đề
+dọc, không thanh cuộn: cột 0 giãn và xuống dòng (không cắt chữ), cột 1 vừa nội dung, cao vừa đúng số
+hàng (tính lại khi đổi bề ngang, font, kiểu, ngôn ngữ). Bánh xe chuột trên bảng cuộn mục chứa nó.
+Tab không đi giữa các ô (`tabKeyNavigation` tắt): một điểm dừng Tab, mũi tên đổi hàng. Trợ năng: tên
+“Phím tắt”, mô tả là gợi ý của hàng; ô cột 0 đọc “{mô tả}: {phím}”, ô cột 1 đọc phím. Đổi ngôn ngữ thì
+dựng lại chữ, giữ hàng đang chọn.
 
 **Controller** (bảng ở spec D2 mục 1.6, 9): lưu trước, áp sau; lỗi thì trả control về giá trị đã xác
 nhận gần nhất của trường đó, nhưng chỉ khi đó là lời gọi mới nhất của trường (`_seq`); kết quả của host
@@ -98,13 +110,14 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from PySide6.QtCore import (
     QCoreApplication,
     QEvent,
     QLocale,
     QObject,
+    QRect,
     QSize,
     QStandardPaths,
     Qt,
@@ -118,7 +131,9 @@ from PySide6.QtGui import (
     QHideEvent,
     QKeyEvent,
     QResizeEvent,
+    QShowEvent,
     QValidator,
+    QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -130,6 +145,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -140,6 +156,9 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSpinBox,
     QStackedWidget,
+    QStyle,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -153,7 +172,7 @@ from teleport.app.devices import DeviceView
 from teleport.app.node import Node
 from teleport.app.settings import DeviceSettings, SettingsSaveError
 from teleport.core.messages import PROTOCOL_VERSION, MessageError, validate_device_name
-from teleport.ui import i18n, icons, texts, theme
+from teleport.ui import i18n, icons, shortcuts, texts, theme
 from teleport.ui.appearance import AppearanceSection
 from teleport.ui.appearance import section_title as appearance_title
 from teleport.ui.radar import DeviceListModel
@@ -188,6 +207,9 @@ _NAV_ICON = 20  # px (`shield_checkmark` có cỡ 20)
 _NAV_ROW_HEIGHT = 36  # px
 _AVATAR = 32  # px
 _PALETTE_EVENTS = (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange)
+_FIT_PASSES = 4  # số lượt tối đa tính lại chiều cao bảng Phím tắt tới khi đứng yên
+_TABLE_ROW_PADDING = 6  # px, trên và dưới chữ mỗi hàng của bảng Phím tắt
+_TABLE_CELL_PADDING = 8  # px, hai bên chữ mỗi ô của bảng Phím tắt
 
 # Seam (đọc lúc gọi): hộp chọn file lưu log và hàm xuất log.
 dialog_factory: Callable[[QWidget | None], QFileDialog] = QFileDialog
@@ -730,6 +752,135 @@ def read_snapshot(node: Node) -> SettingsSnapshot:
 # ---- Trang -------------------------------------------------------------------------------------
 
 
+class _ShortcutTable(QTableWidget):
+    """Bảng phím tắt chỉ để xem (xem docstring module, “Bảng Phím tắt”)."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(0, 2, parent)
+        self.setObjectName("shortcutsTable")
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # Tab và bấm chuột
+        self.setTabKeyNavigation(False)
+        self.setAlternatingRowColors(False)
+        self.setWordWrap(True)
+        self.setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.setShowGrid(False)
+        self.setCornerButtonEnabled(False)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        vertical = self.verticalHeader()
+        vertical.setVisible(False)
+        vertical.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header = self.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        header.setHighlightSections(False)
+        header.setSectionsClickable(False)
+        self._fitting = False
+        self._refit = False
+        # Cột giãn đổi bề ngang sau khi bảng đổi cỡ (header tự hẹn lại bố cục): tính lại ở vòng lặp sau.
+        self._fit_timer = QTimer(self)
+        self._fit_timer.setSingleShot(True)
+        self._fit_timer.setInterval(0)
+        self._fit_timer.timeout.connect(self.fit_height)
+        header.sectionResized.connect(lambda *_args: self._fit_timer.start())
+        # Lề ngang của ô (chữ không dính mép khung); cột 1 vừa nội dung nên tính cả lề này.
+        self.setStyleSheet(
+            f"QTableWidget::item {{ padding: 0px {_TABLE_CELL_PADDING}px; }}"
+            f"QHeaderView::section {{ padding: 4px {_TABLE_CELL_PADDING + 1}px; }}"
+        )
+
+    def set_rows(self, rows: Sequence[tuple[str, str]], headers: tuple[str, str]) -> None:
+        """Đặt chữ các hàng (mô tả, phím) và tiêu đề cột; giữ hàng đang chọn."""
+        current = self.currentRow()
+        self.setHorizontalHeaderLabels(list(headers))
+        self.setRowCount(len(rows))
+        for row, (description, key) in enumerate(rows):
+            for column, text in enumerate((description, key)):
+                item = self.item(row, column)
+                if item is None:
+                    item = QTableWidgetItem()
+                    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                    self.setItem(row, column, item)
+                item.setText(text)
+                spoken = texts.fill("{description}: {key}", description=description, key=key)
+                item.setData(Qt.ItemDataRole.AccessibleTextRole, spoken if column == 0 else key)
+                item.setToolTip("")
+        if 0 <= current < len(rows) and self.currentRow() != current:
+            self.setCurrentCell(current, 0)
+        self.fit_height()
+        self._fit_timer.start()
+
+    def fit_height(self) -> None:
+        """Cao vừa đúng tiêu đề và mọi hàng (không thanh cuộn).
+
+        Đổi chiều cao kéo theo đổi bề ngang cột (và chiều cao hàng xuống dòng): lời gọi tới trong lúc
+        đang tính thì tính lại sau, tới khi đứng yên."""
+        if self._fitting:
+            self._refit = True
+            return
+        self._fitting = True
+        try:
+            for _ in range(_FIT_PASSES):
+                self._refit = False
+                self._fit_rows()
+                header = self.horizontalHeader()
+                height = max(header.height(), header.sizeHint().height()) if not header.isHidden() else 0
+                height += sum(self.rowHeight(row) for row in range(self.rowCount()))
+                height += 2 * self.frameWidth()
+                if self.height() != height or self.minimumHeight() != height:
+                    self.setFixedHeight(height)
+                if not self._refit:
+                    break
+        finally:
+            self._fitting = False
+
+    def _fit_rows(self) -> None:
+        """Chiều cao mỗi hàng theo chữ xuống dòng ở bề ngang cột hiện tại (không dùng
+        `resizeRowsToContents`: tiêu đề dọc đã ẩn vẫn góp cỡ của nó vào hàng)."""
+        metrics = QFontMetrics(self.font())
+        style = self.style()
+        frame = style.pixelMetric(QStyle.PixelMetric.PM_FocusFrameHMargin, None, self) + 1
+        margin = 2 * (frame + _TABLE_CELL_PADDING)
+        flags = int(Qt.TextFlag.TextWordWrap)
+        header = self.horizontalHeader()
+        for row in range(self.rowCount()):
+            height = metrics.height()
+            for column in range(self.columnCount()):
+                item = self.item(row, column)
+                if item is None:
+                    continue
+                width = max(1, header.sectionSize(column) - margin)
+                rect = metrics.boundingRect(QRect(0, 0, width, 0), flags, item.text())
+                height = max(height, rect.height())
+            target = height + 2 * _TABLE_ROW_PADDING
+            if self.rowHeight(row) != target:
+                self.setRowHeight(row, target)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self.fit_height()
+        self._fit_timer.start()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        self._fit_timer.start()
+
+    def changeEvent(self, event: QEvent) -> None:
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange):
+            self.fit_height()
+            self._fit_timer.start()
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        # Không có gì để cuộn trong bảng: để bánh xe tới vùng cuộn của mục chứa bảng.
+        event.ignore()
+
+
 class SettingsPage(QWidget):
     """Trang “Cài đặt” (xem docstring module). Không gọi node; `set_*` không phát signal."""
 
@@ -1013,6 +1164,10 @@ class SettingsPage(QWidget):
         self.export_button.clicked.connect(self.export_logs_requested)
         self.export_row.set_control(self.export_button)
 
+        self.shortcuts_row = self._row(Section.ADVANCED, "shortcutsRow")
+        self.shortcuts_table = _ShortcutTable(self.shortcuts_row)
+        self.shortcuts_row.add_line(self.shortcuts_table)
+
         self.version_row = self._row(Section.ADVANCED, "versionRow")
         self.license_row = self._row(Section.ADVANCED, "licenseRow")
         self.notices_button = QPushButton(self.license_row)
@@ -1172,13 +1327,22 @@ class SettingsPage(QWidget):
         self.export_button.setEnabled(not self._export_running)
         self._update_export_text()
 
-    def show_section(self, section: Section, device_id: str | None = None) -> None:
-        """Mở mục `section`; `device_id` (mục Thiết bị tin cậy) → tiêu điểm vào hàng máy đó."""
+    def show_section(
+        self,
+        section: Section,
+        device_id: str | None = None,
+        *,
+        focus: Literal["ask", "clipboard"] = "ask",
+    ) -> None:
+        """Mở mục `section`; `device_id` (mục Thiết bị tin cậy) → tiêu điểm vào ô “Hỏi trước khi nhận”
+        của máy đó, hay ô “Đồng bộ clipboard” khi `focus="clipboard"` và trang đã có ảnh chụp."""
         self.nav.setCurrentRow(list(Section).index(Section(section)))
         if device_id is not None:
             row = self._rows.get(device_id)
             if row is not None:
-                row.ask_checkbox.setFocus(Qt.FocusReason.OtherFocusReason)
+                use_clipboard = focus == "clipboard" and self._loaded
+                target = row.clipboard_checkbox if use_clipboard else row.ask_checkbox
+                target.setFocus(Qt.FocusReason.OtherFocusReason)
                 self._section_widgets[Section.DEVICES].ensureWidgetVisible(row)
 
     def show_notice(self, level: InfoLevel, text: texts.Text, *, action: texts.Text | None = None) -> None:
@@ -1284,6 +1448,7 @@ class SettingsPage(QWidget):
         )
         self.notices_button.setText(t("Settings", "Thông báo bên thứ ba"))
         self.notices_button.setAccessibleName(t("Settings", "Thông báo bên thứ ba"))
+        self._update_shortcuts_table()
         self._update_visibility_texts()
         self._update_autostart()
         self._update_receive_dir()
@@ -1348,6 +1513,16 @@ class SettingsPage(QWidget):
         self.open_dir_button.setVisible(self._receive_dir is not None)
         self.open_dir_button.setAccessibleDescription(text)
         self.change_dir_button.setAccessibleDescription(text)
+
+    def _update_shortcuts_table(self) -> None:
+        t = QCoreApplication.translate
+        label = t("Settings", "Phím tắt")
+        hint = t("Settings", "Dùng Teleport không cần chuột. Danh sách chỉ để xem, không đổi được phím.")
+        self.shortcuts_row.set_text(label, hint)
+        table = self.shortcuts_table
+        table.setAccessibleName(label)
+        table.setAccessibleDescription(hint)
+        table.set_rows(shortcuts.table_rows(), (t("Settings", "Thao tác"), t("Settings", "Phím")))
 
     def _update_export_text(self) -> None:
         t = QCoreApplication.translate
@@ -1439,6 +1614,7 @@ class SettingsPage(QWidget):
             self.rate_spin,
             self.retention_spin,
             self.export_button,
+            self.shortcuts_table,
             self.notices_button,
         ]
         for first, second in itertools.pairwise(chain):

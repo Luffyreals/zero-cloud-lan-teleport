@@ -44,8 +44,8 @@ Chỉ có những gì các màn dùng tới. Không có `Card` (đã có `QFrame
   lại nó bằng ngôn ngữ mới trước khi thanh nhận `LanguageChange`).
 - `EmptyState`: vòng tròn 56 px nền `accent_subtle`, icon `accent_text`; tiêu đề SECTION (font điểm
   nhấn), mô tả `tone=muted`, nút chính (`PRIMARY_PROPERTY`). Khối rộng tối đa 360 px, căn giữa.
-- `PageHeader`: nút “Quay lại” (có chữ, tooltip kèm Esc), tiêu đề SECTION, đường kẻ dưới 1 px
-  `border`. Phím Esc do cửa sổ chính bắt (`main_window`), không nằm ở đây.
+- `PageHeader`: nút “Quay lại” (có chữ, tooltip kèm phím BACK của `ui.shortcuts`), tiêu đề SECTION,
+  đường kẻ dưới 1 px `border`. Phím Esc do cửa sổ chính bắt (`main_window`), không nằm ở đây.
 - `ToggleSwitch` (spec D2 mục 1.5): `QAbstractButton` checkable, `StrongFocus`, rãnh 40×20 tự vẽ và chữ
   “Bật”/“Tắt” bên phải (trạng thái không chỉ nói bằng màu hay vị trí núm, mvp N12). Tắt: nền
   `surface_raised`, viền 1 px `border_strong`, núm `text_muted`. Bật: nền `accent_strong`, núm
@@ -114,7 +114,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from teleport.ui import i18n, icons, texts, theme
+from teleport.ui import i18n, icons, shortcuts, texts, theme
 from teleport.ui.texts import Text
 from teleport.ui.theme import Tokens
 
@@ -1014,7 +1014,7 @@ class PageHeader(QWidget):
             "chevron_left",
             QCoreApplication.translate("Widgets", "Quay lại"),
             self,
-            shortcut=QKeySequence(Qt.Key.Key_Escape),
+            shortcut=shortcuts.sequence(shortcuts.Shortcut.BACK),
             show_text=True,
         )
         self.back_button.clicked.connect(self.back_requested)

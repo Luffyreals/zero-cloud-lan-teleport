@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import ipaddress
 import itertools
-import math
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -39,6 +38,7 @@ from teleport.core.messages import (
     validate_device_name,
     validate_os,
 )
+from teleport.core.numbers import is_finite
 
 SERVICE_TYPE = "_teleport._tcp.local."
 RECORD_TTL = 60  # giây, cho mọi bản ghi quảng bá (host_ttl và other_ttl)
@@ -296,16 +296,23 @@ def _usable_ipv4(value: object) -> ipaddress.IPv4Address | None:
     return addr
 
 
-def filter_addresses(addresses: Iterable[object]) -> tuple[str, ...]:
+def filter_addresses(addresses: Iterable[object], *, lan_only: bool = False) -> tuple[str, ...]:
     """Giữ IPv4 dùng được, bỏ trùng, sắp tăng dần theo số, tối đa `MAX_ADDRESSES`.
 
     Bị bỏ: phần tử không phải chuỗi, không phải IPv4 (kể cả có số 0 đứng đầu),
     loopback, link-local, multicast, reserved (240/4, 255.255.255.255) và 0.0.0.0/8.
+    `lan_only` bỏ thêm địa chỉ Internet công khai (`is_global`) trước khi cắt còn
+    `MAX_ADDRESSES`: dùng cho bản ghi nhận được, vì node không tự gọi ra Internet
+    (mvp N9) mà mDNS không xác thực (protocol mục 8).
     Chỉ xét `MAX_RAW_ADDRESSES` phần tử đầu của đầu vào; phần sau bị bỏ, để một bản
     ghi cực lớn từ máy khác không tốn thời gian xử lý tùy ý.
     """
     head = itertools.islice(addresses, MAX_RAW_ADDRESSES)
-    usable = {addr for value in head if (addr := _usable_ipv4(value)) is not None}
+    usable = {
+        addr
+        for value in head
+        if (addr := _usable_ipv4(value)) is not None and not (lan_only and addr.is_global)
+    }
     return tuple(str(addr) for addr in sorted(usable)[:MAX_ADDRESSES])
 
 
@@ -320,7 +327,7 @@ def parse_service(resolved: ResolvedService) -> DiscoveredDevice:
     port = resolved.port
     if type(port) is not int or not 1 <= port <= 65535:
         raise DiscoveryRecordError("cổng phải là số nguyên 1–65535")
-    addresses = filter_addresses(resolved.addresses)
+    addresses = filter_addresses(resolved.addresses, lan_only=True)
     if not addresses:
         raise DiscoveryRecordError("không có địa chỉ IPv4 dùng được")
     return DiscoveredDevice(
@@ -421,7 +428,7 @@ def _check_now(now: object) -> float:
     """`now` phải là số hữu hạn (giây, đồng hồ monotonic)."""
     if isinstance(now, bool) or not isinstance(now, int | float):
         raise TypeError("now phải là số giây (đồng hồ monotonic)")
-    if not math.isfinite(now):
+    if not is_finite(now):
         raise ValueError("now phải là số hữu hạn")
     return float(now)
 
@@ -477,7 +484,7 @@ class DiscoveryTracker:
             raise ValueError("max_services phải là số nguyên ≥ 1")
         if isinstance(probe_interval, bool) or not isinstance(probe_interval, int | float):
             raise TypeError("probe_interval phải là số giây")
-        if not math.isfinite(probe_interval) or probe_interval <= 0:
+        if not is_finite(probe_interval) or probe_interval <= 0:
             raise ValueError("probe_interval phải là số hữu hạn > 0")
         self._self_id = self_device_id
         self._max_services = max_services
@@ -719,7 +726,7 @@ def _check_clock(name: str, value: object) -> float:
     """Giá trị đồng hồ: số hữu hạn (giây)."""
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise TypeError(f"{name} phải là số giây")
-    if not math.isfinite(value):
+    if not is_finite(value):
         raise ValueError(f"{name} phải là số hữu hạn")
     return float(value)
 

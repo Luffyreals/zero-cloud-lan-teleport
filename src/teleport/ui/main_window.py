@@ -79,9 +79,19 @@ thì Tab bỏ qua nó, “Đổi…” vẫn cuối). WELCOME: ô tên → “Đ
 đầu (`_place_focus`): WELCOME thì `first_run.focus_target()` (ô tên, con trỏ cuối chữ; có lỗi tên thì
 chọn hết chữ; có lỗi thư mục thì “Đổi…”); ERROR thì “Thử lại”; RUNNING thì danh sách cuộc trò
 chuyện khi có máy đã ghép đôi (`conversations.model.rowCount()`), không thì nút “Ghép đôi máy mới”;
-STARTING thì dòng trạng thái. Trạng thái luôn nói bằng chữ, không chỉ bằng màu. Phím tắt: F5 = Thử
-lại (khi nút đang hiện), Ctrl+W = đóng cửa sổ, Ctrl+Q = Thoát, Ctrl+, = Cài đặt (khi đã có trang
-SETTINGS và đang RUNNING, như nút ⚙; tooltip của nút có phím tắt).
+STARTING thì dòng trạng thái. Trạng thái luôn nói bằng chữ, không chỉ bằng màu.
+
+**Phím tắt**: danh sách phím và mô tả ở `ui.shortcuts` (nguồn duy nhất); `_install_shortcuts` dựng
+các `QAction` `WindowShortcut` (`_discover_action`, `_settings_action`, `_open_dir_action`, chín
+`_conversation_actions`, `_previous_action`, `_next_action`, `_back_action`, `_close_action`,
+`_quit_action`, `_retry_action`) và `_update_shortcuts` bật/tắt chúng theo trạng thái và trang (gọi
+mỗi khi trang, `ViewState` hay thư mục nhận đổi; action tắt thì phím đi tiếp tới widget, ví dụ
+Alt+↓ của QComboBox). Ở RUNNING: Tìm máy mới / Cài đặt khi đã có trang đó (mọi trang), Mở thư mục
+nhận khi có thư mục nhận; chỉ ở trang HOME: mở cuộc trò chuyện thứ n (`open_conversation_at`), chuyển
+lên/xuống (`step_conversation`, không vòng, tự lặp khi giữ phím); cả hai đi qua `open_conversation`
+nên tiêu điểm vào danh sách. Quay lại khi ở trang khác HOME; Đóng cửa sổ, Thoát, Thử lại luôn bật
+(Thử lại chỉ chạy khi nút đang hiện). Tooltip của nút đầu cột, “＋”, “Mở thư mục”, “Quay lại”, “Thử
+lại” ghi kèm phím. Phím Dán file và Chọn file gắn ở `ui.chat.ChatView`.
 
 Cỡ cửa sổ lúc mở: `default_size(vùng dùng được của màn hình chính)` = `DEFAULT_SIZE` kẹp theo màn
 hình; cỡ tối thiểu `MIN_SIZE`. Hình học, phóng to và màn hình được nhớ giữa các lần chạy
@@ -125,6 +135,7 @@ các thuộc tính công khai (`conversations`, `transfers_area`, `body`, `statu
 from __future__ import annotations
 
 import contextlib
+import functools
 from collections.abc import Sequence
 from enum import StrEnum
 from itertools import pairwise
@@ -148,7 +159,6 @@ from PySide6.QtGui import (
     QAction,
     QCloseEvent,
     QGuiApplication,
-    QKeySequence,
     QPainter,
     QPaintEvent,
     QPen,
@@ -173,7 +183,7 @@ from shiboken6 import isValid
 
 from teleport import paths
 from teleport.net.connection import DEFAULT_PORT
-from teleport.ui import first_run, texts, theme
+from teleport.ui import first_run, shortcuts, texts, theme
 from teleport.ui.backdrop import MicaBackdrop
 from teleport.ui.conversations import ConversationList
 from teleport.ui.discover import DiscoverPage
@@ -181,6 +191,7 @@ from teleport.ui.first_run import FirstRunChoice, TextSource
 from teleport.ui.home import START_PANEL_MAX_WIDTH as START_PANEL_MAX_WIDTH  # hằng của bảng spec B1 mục 2.3
 from teleport.ui.home import MachineCard, SaveBar, StartPanel
 from teleport.ui.radar import DeviceListModel
+from teleport.ui.shortcuts import Shortcut
 from teleport.ui.tray import Tray, make_icon
 from teleport.ui.widgets import (
     AvatarKind,
@@ -196,7 +207,7 @@ MIN_SIZE = QSize(720, 460)
 SIDEBAR_WIDTH = 288  # px, cột trái (kể cả viền phải 1 px)
 SIDEBAR_COMPACT_WIDTH = 80  # px, cột trái thu gọn (chỉ còn avatar) khi cửa sổ hẹp
 COMPACT_BELOW = 820  # px: cửa sổ hẹp hơn thì cột trái thu gọn
-SETTINGS_SHORTCUT = "Ctrl+,"  # mở trang Cài đặt
+SETTINGS_SHORTCUT = shortcuts.portable_text(Shortcut.SETTINGS)  # mở trang Cài đặt
 _BRAND_LOGO = 32  # px
 _LAYOUT_PASSES = 5  # tối đa số lượt chạy layout trước khi cuộn tới widget có tiêu điểm
 _COMPACT_MACHINE = 48  # px, nút “Máy này” khi cột trái thu gọn
@@ -428,6 +439,7 @@ class MainWindow(QMainWindow):
         self._receive_dir_unavailable: Path | None = None
         self._receive_dir_pending: Path | None = None
         self._receiving_paused = False  # người dùng tạm dừng nhận (menu khay, spec D4)
+        self._shortcuts_ready = False  # `_install_shortcuts` xong; trước đó `_update_shortcuts` bỏ qua
         self._error_code = ""
         self._error_detail = ""
         self._addresses: tuple[str, ...] = ()
@@ -503,7 +515,10 @@ class MainWindow(QMainWindow):
         self.brand_label.setFont(theme.font_for(theme.TextStyle.TITLE, self.brand_label.font()))
         self.brand_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.discover_button = IconButton(
-            "search", QCoreApplication.translate("MainWindow", "Tìm máy mới"), self.sidebar_header
+            "search",
+            QCoreApplication.translate("MainWindow", "Tìm máy mới"),
+            self.sidebar_header,
+            shortcut=shortcuts.sequence(Shortcut.DISCOVER),
         )
         self.discover_button.setObjectName("discoverButton")
         self.discover_button.clicked.connect(self._open_discover)
@@ -511,7 +526,7 @@ class MainWindow(QMainWindow):
             "settings",
             QCoreApplication.translate("MainWindow", "Cài đặt"),
             self.sidebar_header,
-            shortcut=QKeySequence(SETTINGS_SHORTCUT),
+            shortcut=shortcuts.sequence(Shortcut.SETTINGS),
         )
         self.settings_button.setObjectName("settingsButton")
         self.settings_button.clicked.connect(self._open_settings)
@@ -643,31 +658,7 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             app.focusChanged.connect(self._on_focus_changed)
 
-        self._retry_action = QAction(self)
-        self._retry_action.setShortcut(QKeySequence(Qt.Key.Key_F5))
-        self._retry_action.triggered.connect(self._retry_shortcut)
-        self._close_action = QAction(self)
-        self._close_action.setShortcut(QKeySequence("Ctrl+W"))
-        self._close_action.triggered.connect(self.close)
-        self._quit_action = QAction(self)
-        self._quit_action.setShortcut(QKeySequence("Ctrl+Q"))
-        self._quit_action.triggered.connect(self.quit_requested)
-        self._back_action = QAction(self)
-        self._back_action.setShortcut(QKeySequence(Qt.Key.Key_Escape))
-        self._back_action.setEnabled(False)
-        self._back_action.triggered.connect(self.go_back)
-        self._settings_action = QAction(self)
-        self._settings_action.setShortcut(QKeySequence(SETTINGS_SHORTCUT))
-        self._settings_action.triggered.connect(self._open_settings)
-        for action in (
-            self._retry_action,
-            self._close_action,
-            self._quit_action,
-            self._back_action,
-            self._settings_action,
-        ):
-            action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-            self.addAction(action)
+        self._install_shortcuts()
 
         self.add_page(Page.DISCOVER, self.discover)  # cũng dời “Mở thư mục” về cuối chuỗi Tab
         self._update_page_buttons()
@@ -818,6 +809,7 @@ class MainWindow(QMainWindow):
         """Thêm trang `page` (xem `PageStack.add_page`); hiện nút đầu cột và nút của màn rỗng tương ứng."""
         self.pages.add_page(page, widget)
         self._update_page_buttons()
+        self._update_shortcuts()
         self._update_empty_content()
         self._keep_footer_last()
 
@@ -884,8 +876,8 @@ class MainWindow(QMainWindow):
         if self.pages.has_page(Page.SETTINGS):
             self.open_page(Page.SETTINGS)
 
-    def _on_page_changed(self, page: str) -> None:
-        self._back_action.setEnabled(page != Page.HOME)
+    def _on_page_changed(self, _page: str) -> None:
+        self._update_shortcuts()
 
     def _update_page_buttons(self) -> None:
         self.discover_button.setVisible(self.pages.has_page(Page.DISCOVER))
@@ -950,7 +942,12 @@ class MainWindow(QMainWindow):
         self.brand_label.setAccessibleName(texts.APP_NAME)
         self.retry_button.setText(texts.retry())
         self.retry_button.setAccessibleName(texts.retry())
-        self.retry_button.setToolTip(QCoreApplication.translate("MainWindow", "Khởi động lại Teleport (F5)"))
+        self.retry_button.setToolTip(
+            texts.fill(
+                QCoreApplication.translate("MainWindow", "Khởi động lại Teleport ({key})"),
+                key=shortcuts.key_text(Shortcut.RETRY),
+            )
+        )
         start = QCoreApplication.translate("MainWindow", "Bắt đầu")
         self.start_button.setText(start)
         self.start_button.setAccessibleName(start)
@@ -961,11 +958,7 @@ class MainWindow(QMainWindow):
         transfers = QCoreApplication.translate("MainWindow", "Lượt truyền")
         self.stream_pane.setAccessibleName(transfers)
         self.transfers_area.setAccessibleName(transfers)
-        self._retry_action.setText(texts.retry())
-        self._close_action.setText(QCoreApplication.translate("MainWindow", "Đóng cửa sổ"))
-        self._quit_action.setText(texts.menu_quit())
-        self._back_action.setText(QCoreApplication.translate("MainWindow", "Quay lại"))
-        self._settings_action.setText(QCoreApplication.translate("MainWindow", "Cài đặt"))
+        shortcuts.retranslate_actions(self)
         self.start_view.retranslate()
         self.machine_card.retranslate()
         self.save_bar.retranslate()
@@ -992,6 +985,7 @@ class MainWindow(QMainWindow):
         self._apply_receive_dir()
         self._update_empty_content()
         self._update_stream()
+        self._update_shortcuts()
 
     def _apply_receive_dir(self) -> None:
         """Áp thư mục nhận đã nhớ vào `save_bar` và huy hiệu; ngoài RUNNING thì xóa cả hai."""
@@ -1003,6 +997,7 @@ class MainWindow(QMainWindow):
             running and receive_dir is None and unavailable is not None
         )
         self.machine_card.set_receiving_paused(running and self._receiving_paused)
+        self._update_shortcuts()
 
     def _content(self) -> tuple[str, str, list[str]]:
         """(dòng trạng thái, dòng chi tiết, các dòng gợi ý) của khối căn giữa; WELCOME (form lần chạy
@@ -1249,3 +1244,71 @@ class MainWindow(QMainWindow):
     def _retry_shortcut(self) -> None:
         if self.retry_button.isVisibleTo(self):
             self.retry_requested.emit()
+
+    # ---- Phím tắt (`ui.shortcuts`) -------------------------------------------------------------
+
+    def _install_shortcuts(self) -> None:
+        """Dựng các `QAction` phím tắt của cửa sổ (danh sách phím ở `ui.shortcuts`)."""
+        make = shortcuts.make_action
+        self._retry_action = make(self, Shortcut.RETRY, self._retry_shortcut)
+        self._close_action = make(self, Shortcut.CLOSE_WINDOW, self.close)
+        self._quit_action = make(self, Shortcut.QUIT, self.quit_requested.emit)
+        self._back_action = make(self, Shortcut.BACK, self.go_back)
+        self._back_action.setEnabled(False)
+        self._settings_action = make(self, Shortcut.SETTINGS, self._open_settings)
+        self._discover_action = make(self, Shortcut.DISCOVER, self._open_discover)
+        self._open_dir_action = make(self, Shortcut.OPEN_RECEIVE_DIR, self._open_receive_dir_shortcut)
+        self._conversation_actions: list[QAction] = [
+            make(
+                self,
+                Shortcut.GO_TO_CONVERSATION,
+                functools.partial(self._go_to_conversation, row),
+                keys=[key],
+            )
+            for row, key in enumerate(shortcuts.sequences(Shortcut.GO_TO_CONVERSATION))
+        ]
+        self._previous_action = make(
+            self, Shortcut.PREVIOUS_CONVERSATION, lambda: self._step_conversation(-1), auto_repeat=True
+        )
+        self._next_action = make(
+            self, Shortcut.NEXT_CONVERSATION, lambda: self._step_conversation(1), auto_repeat=True
+        )
+        self._shortcuts_ready = True
+
+    def _update_shortcuts(self) -> None:
+        """Bật/tắt phím tắt theo `ViewState`, trang hiện tại và thư mục nhận (xem docstring module)."""
+        if not self._shortcuts_ready:
+            return  # đang dựng cửa sổ: `_install_shortcuts` chưa chạy xong
+        running = self._state is ViewState.RUNNING
+        page = self.pages.current_page
+        home = running and page is Page.HOME
+        self._back_action.setEnabled(page is not Page.HOME)
+        self._discover_action.setEnabled(running and self.pages.has_page(Page.DISCOVER))
+        self._settings_action.setEnabled(running and self.pages.has_page(Page.SETTINGS))
+        self._open_dir_action.setEnabled(running and self._receive_dir is not None)
+        for action in (*self._conversation_actions, self._previous_action, self._next_action):
+            action.setEnabled(home)
+
+    def open_conversation_at(self, row: int) -> bool:
+        """Mở cuộc trò chuyện ở hàng `row` (0 là hàng đầu) của danh sách như `open_conversation`;
+        không có hàng đó → False."""
+        device_id = self.conversations.device_id_at(row)
+        return device_id is not None and self.open_conversation(device_id)
+
+    def step_conversation(self, step: int) -> bool:
+        """Mở cuộc trò chuyện cách máy đang chọn `step` hàng (âm: lên trên), không vòng; chưa chọn
+        máy nào thì hàng đầu (`step` > 0) hay hàng cuối (`step` < 0). Ra ngoài danh sách → False."""
+        device_id = self.conversations.neighbor_id(step)
+        return device_id is not None and self.open_conversation(device_id)
+
+    def _go_to_conversation(self, row: int) -> None:
+        if self._state is ViewState.RUNNING and self.pages.current_page is Page.HOME:
+            self.open_conversation_at(row)
+
+    def _step_conversation(self, step: int) -> None:
+        if self._state is ViewState.RUNNING and self.pages.current_page is Page.HOME:
+            self.step_conversation(step)
+
+    def _open_receive_dir_shortcut(self) -> None:
+        if self._state is ViewState.RUNNING and self._receive_dir is not None:
+            self.open_receive_dir_requested.emit(self._receive_dir)
