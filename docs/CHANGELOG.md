@@ -234,6 +234,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 - Đóng `Node` khi đĩa chậm (quá hạn chờ dọn đĩa), hoặc hủy khởi động lúc đang mở lại một lượt dở, không còn giữ file `.part` / `.state` và thư mục nhận mở tới khi tiến trình thoát: việc đĩa đang chạy được làm nốt rồi thư mục nhận mới đóng. Trước đây, mở lại node trong cùng tiến trình trên Windows có thể làm lượt nối lại hỏng vì `PermissionError`.
 
 ### Security
+- Trên Windows, khóa riêng của máy (`device.key`) tạo mới chỉ tài khoản của bạn (cùng SYSTEM và Administrators) đọc được, kể cả khi thư mục cấu hình là thư mục dùng chung chọn bằng `--config-dir` hay `TELEPORT_HOME`; trước đây khóa mang quyền của thư mục đó, nên người dùng khác trên cùng máy có thể đọc khóa và mạo danh máy này. Khóa đã tạo từ trước giữ nguyên quyền cũ. Cần Python 3.12.4 trở lên khi chạy từ mã nguồn.
 - Chuyển sang ẩn không để lọt bản quảng bá mDNS nào sau goodbye, kể cả khi máy lạ hỏi dồn: các câu trả lời mDNS đang chờ gửi bị bỏ trước goodbye. Đang hiện mà quảng bá lỗi (ví dụ gói của chính máy này dội lại bị coi nhầm là máy trùng mã) thì Teleport tự thử lại mỗi vài giây thay vì kẹt ở trạng thái không ai thấy.
 - Hủy ghép đôi (kể cả `teleport unpair` khi Teleport không chạy) xóa luôn cài đặt riêng của máy đó, ghép đôi lại thì về mặc định; cài đặt của máy không còn tin cậy không bao giờ có hiệu lực, nên một máy khác đặt cùng tên không thừa hưởng “Luôn nhận”.
 - Tên do máy khác đặt không bao giờ được hiện dạng HTML trong giao diện, kể cả trong chú thích khi rê chuột.
