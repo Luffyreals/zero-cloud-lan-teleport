@@ -357,6 +357,7 @@ class Tray(QObject):
         super().__init__(parent)
         self._message_folder: Path | Reveal | None = None
         self._state = TrayState()
+        self._disposed = False  # sau `dispose()` mục menu đã bị xóa: bỏ mọi lần vẽ lại
         self._targets_provider: Callable[[], Sequence[SendTarget]] | None = None
         self._menu = QMenu()
         self._menu.installEventFilter(self)
@@ -473,6 +474,8 @@ class Tray(QObject):
         self._targets_provider = provider
 
     def _apply(self, state: TrayState) -> None:
+        if self._disposed:
+            return
         if state != self._state:
             self._state = state
             self._render()
@@ -570,6 +573,12 @@ class Tray(QObject):
         self.message_clicked.emit(self._message_folder)
 
     def dispose(self) -> None:
-        """Ẩn biểu tượng và xóa menu (menu không có cha Qt; menu con là con của nó)."""
+        """Ẩn biểu tượng và xóa menu (menu không có cha Qt; menu con là con của nó).
+
+        Dừng hẹn giờ thông báo clipboard và bỏ mọi cập nhật sau đó: mục menu đã bị xóa. Gọi lại thì thôi."""
+        if self._disposed:
+            return
+        self._disposed = True
+        self._clip_timer.stop()
         self._icon.hide()
         self._menu.deleteLater()

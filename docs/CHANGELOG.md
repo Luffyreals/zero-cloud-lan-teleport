@@ -201,6 +201,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 - Lời hỏi `[c/k]` của `listen`, `pair` và `receive` được in lại khi có dòng khác in chen giữa lúc đang chờ trả lời.
 
 ### Fixed
+- Giao diện: khay hệ thống không còn báo lỗi khi thông báo clipboard hết giờ đúng lúc khay vừa bị gỡ (ví dụ lúc thoát app).
 - Thoát Teleport trong lúc đang gửi file và đang đồng bộ clipboard lớn tới một máy: máy kia giờ luôn thấy lượt truyền bị hủy (“đã hủy”), không còn có lúc thấy mất kết nối rồi “Đang nối lại…”. Kết nối được đóng gọn ngay cả khi máy kia vẫn đang gửi dữ liệu, thay vì bị cắt ngang làm mất phần cuối chưa đọc. Máy lạ gửi dồn dữ liệu đúng lúc kết nối ghép đôi đang đóng thì kết nối vẫn bị cắt ngay như trước, nên không chiếm được CPU của máy này.
 - Giao diện: mỗi lời mời nhận file chỉ gửi đúng một quyết định; trả lời gần như cùng lúc ở hai chỗ (hộp hỏi, bong bóng, nút Hủy) không còn biến “Nhận” thành từ chối khi đang kiểm lại chỗ trống sau khi đổi thư mục nhận.
 - Giao diện: câu báo lỗi của lượt nhận (lỗi ghi đĩa, thư mục nhận không còn) nêu đúng thư mục lúc lượt dừng, kể cả sau khi đã đổi thư mục nhận.
