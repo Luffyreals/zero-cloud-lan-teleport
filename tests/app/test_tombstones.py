@@ -568,6 +568,32 @@ async def test_close_flush_is_bounded_by_tombstone_flush_timeout_and_never_write
 
 
 @integration
+async def test_failed_tombstone_write_is_retried_once_on_close(lone_sender, TB, monkeypatch, caplog):
+    """Lần ghi bia mộ lỗi (OSError) → WARNING, không tự thử lại ngay; ảnh chụp đó không bị bỏ: `close()`
+    ghi lại đúng một lần dù sau đó không có bia mộ mới (như `HistoryStore`)."""
+    caplog.set_level(logging.WARNING)
+    real = TB.save
+    calls: list[int] = []
+
+    def save(config_dir, records):
+        calls.append(len(list(records)))
+        if len(calls) == 1:
+            raise OSError(28, "ổ đầy (giả lập)")
+        return real(config_dir, records)
+
+    monkeypatch.setattr(TB, "save", save)
+    net = await lone_sender()
+    tids = await send_and_cancel(net, net.files[:3])
+    await wait_until(lambda: teleport_warnings(caplog), 5, "chưa có WARNING ghi lỗi")
+    await asyncio.sleep(0.3)
+    assert len(calls) == 1, "ghi lỗi không được tự hẹn thử lại"
+    assert saved_ids(net.config) == []
+    await asyncio.wait_for(net.B.close(), 10)
+    assert len(calls) == 2, "close() phải ghi lại ảnh chụp đã lỗi"
+    assert saved_ids(net.config) == tids
+
+
+@integration
 @pytest.mark.parametrize("kind", ["hong", "vuot-tran", "thu-muc"])
 async def test_unreadable_tombstones_file_warns_and_node_runs(lone_sender, save_spy, caplog, kind):
     """`tombstones.json` hỏng / vượt trần / không đọc được → WARNING, `Node.start` vẫn xong; lần ghi sau

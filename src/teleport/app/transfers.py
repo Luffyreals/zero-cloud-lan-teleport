@@ -2650,7 +2650,12 @@ class TransferManager:
 
     async def _write_tombstones(self, items: tuple[RestoredTombstone, ...], wall: float) -> None:
         """Một lần ghi `tombstones.json` (mã hóa trong thread). Luôn chờ việc `settled` trước khi cho
-        lần ghi sau (`atomic.write_atomic` dùng tên `.tmp` cố định); còn thay đổi thì hẹn lần sau."""
+        lần ghi sau (`atomic.write_atomic` dùng tên `.tmp` cố định); còn thay đổi thì hẹn lần sau.
+
+        Ghi lỗi: đánh dấu lại là chưa ghi (`_tomb_dirty`) nhưng không tự hẹn thử lại, để không lặp
+        lỗi mãi; lần đổi sau hay `_flush_tombstones` lúc đóng thử lại (như `HistoryStore._write`).
+        Quá hạn thì không đánh dấu: việc vẫn có thể xong muộn."""
+        failed = False
         try:
             try:
                 job = self._executor.submit(_encode_and_save, self._config_dir, items, wall)
@@ -2666,11 +2671,16 @@ class TransferManager:
                 return
             except Exception as e:
                 log.warning("không ghi được %s: %s", tombstones.TOMBSTONES_NAME, _error_label(e))
+                failed = True
             await job.settled()
             self._tomb_last_write = self._loop.time()
         finally:
             if self._tomb_task is asyncio.current_task():
                 self._tomb_task = None
+        if failed and not self._tomb_dirty:
+            # Ảnh chụp này chưa lên đĩa: chờ lần đổi sau hay lúc đóng, không hẹn ngay.
+            self._tomb_dirty = True
+            return
         if self._tomb_dirty:
             self._schedule_tombstone_snapshot()
 

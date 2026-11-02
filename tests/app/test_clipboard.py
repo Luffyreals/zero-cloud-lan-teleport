@@ -633,6 +633,28 @@ async def test_no_target_resets_loop_guard(make):
     assert h.backend.reads == reads + 1
 
 
+async def test_target_lost_during_read_does_not_block_same_content_after_reconnect(make):
+    """Máy đích mất kết nối trong lúc đang đọc: không gửi, và `LoopGuard` không ghi nhận nội dung đó,
+    nên sao chép lại đúng nội dung ấy sau khi nối lại vẫn được gửi (như khi không có máy đích)."""
+    h = make()
+    first = FakeConn("cu")
+    h.connect(D1, first)
+    h.backend.read_gate = asyncio.Event()
+    h.backend.copy_text("X")
+    await wait_until(lambda: h.backend.reads == 1, 3, "chưa đọc clipboard")
+    h.sync.link_down(D1, 1)
+    h.backend.read_gate.set()
+    await asyncio.sleep(SETTLE)
+    assert first.sent == []
+    assert h.of(ClipOutcome.SENT) == []
+    h.backend.read_gate = None
+    second = FakeConn("moi")
+    h.connect(D1, second, conn_id=2)
+    h.backend.copy_text("X")
+    await wait_until(lambda: h.of(ClipOutcome.SENT), 3, "X không được gửi sau khi nối lại")
+    assert assemble_text(second.clips()) == "X"
+
+
 # --- Ca #4: nhạy cảm, quá trần, đọc lỗi ---------------------------------------------------------
 
 
