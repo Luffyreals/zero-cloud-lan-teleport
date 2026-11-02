@@ -242,6 +242,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 - `teleport send` / `receive` / `unpair` / `listen` / `pair` khi có node đang chạy cùng thư mục cấu hình: dòng gợi ý nằm riêng, nêu `teleport receive`, `teleport listen` và “Thoát” trong menu khay của Teleport (trước đây `listen` / `pair` không có dòng gợi ý). Trong `--json`, `message` của lỗi `node_locked` chỉ còn câu “Teleport đang chạy với thư mục cấu hình này.”, không có gợi ý.
 - Build bản CLI thử không dừng ở bước kiểm giấy phép khi máy build có Universal CRT trên `PATH` (ví dụ JDK). Bản build không mang Universal CRT, vì Windows 10 trở lên đã có sẵn.
 - Đóng `Node` khi đĩa chậm (quá hạn chờ dọn đĩa), hoặc hủy khởi động lúc đang mở lại một lượt dở, không còn giữ file `.part` / `.state` và thư mục nhận mở tới khi tiến trình thoát: việc đĩa đang chạy được làm nốt rồi thư mục nhận mới đóng. Trước đây, mở lại node trong cùng tiến trình trên Windows có thể làm lượt nối lại hỏng vì `PermissionError`.
+- Bản zip: hướng dẫn `DOC-TRUOC.txt` khớp giao diện hiện tại (dòng “Lưu vào”, nút “Đổi…”, nút “Hiện trong thư mục”); bộ cài Windows ghi đúng chủ bản quyền.
 
 ### Security
 - Địa chỉ Internet công khai trong bản ghi mDNS bị bỏ qua: một máy trong mạng LAN không còn khiến Teleport tự kết nối ra Internet. Ở mạng LAN dùng dải IP công khai, máy kia không hiện qua mDNS; khi đó ghép đôi và gửi bằng địa chỉ nhập tay.

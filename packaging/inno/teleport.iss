@@ -47,8 +47,8 @@ AppVerName=ZCL Teleport {#AppVersion}
 AppPublisher=Nha-Cong-Dong
 AppPublisherURL=https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport
 AppSupportURL=https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport
-; pyproject.toml không có authors, LICENSE/README không ghi tên chủ bản quyền: ghi chung các tác giả.
-AppCopyright=Copyright (C) 2026 Các tác giả của Zero-Cloud LAN Teleport. GPL-3.0-or-later
+; Chủ bản quyền khớp dòng "Bản quyền" của README.md và authors trong pyproject.toml.
+AppCopyright=Copyright (C) 2026 Nguyễn Hoàng Tùng. GPL-3.0-or-later
 VersionInfoVersion={#AppVersionNumeric}
 VersionInfoProductName=Zero-Cloud LAN Teleport
 VersionInfoProductTextVersion={#AppVersion}
@@ -86,7 +86,10 @@ OutputBaseFilename=teleport-setup-{#AppVersion}-x64
 
 [Languages]
 Name: "vi"; MessagesFile: "languages\Vietnamese.isl"
-; TODO E1: thêm tiếng Anh khi app có English (mvp F11), kèm khối "en." ở [CustomMessages].
+; TODO E1: app đã có English (src/teleport/ui/i18n/teleport_en.qm, mvp F11) nhưng bộ cài vẫn chỉ
+; tiếng Việt; dịch bộ cài để sau buổi demo (đóng băng, ke_hoach mục 5.5): bỏ comment dòng "en" dưới
+; đây và khối "en." ở [CustomMessages]. Giữ ShowLanguageDialog=no thì Inno tự chọn theo ngôn ngữ
+; giao diện Windows.
 ; Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
@@ -98,7 +101,7 @@ vi.DeleteUserData=Xóa luôn cài đặt, danh tính máy và danh sách thiết
 vi.DeleteUserDataFailed=Không xóa hết được thư mục %1. Bạn có thể tự xóa phần còn lại.
 vi.UserDataInUse=Teleport vẫn đang chạy trên máy này (bản cài khác hoặc bản zip) nên chưa xóa thư mục %1. Hãy thoát Teleport rồi tự xóa thư mục này nếu muốn.
 vi.UserDataCheckFailed=Không kiểm được Teleport còn chạy hay không nên chưa xóa thư mục %1. Hãy thoát Teleport rồi tự xóa thư mục này nếu muốn.
-; TODO E1: các message trên bằng tiếng Anh.
+; TODO E1 (sau buổi demo): bản tiếng Anh của các message trên, bỏ comment khi bật ngôn ngữ "en".
 ; en.AppRunning=Teleport is running. Quit Teleport (right-click the tray icon → Quit), then click Retry.
 ; en.AppRunningAborted=Teleport is still running. Quit Teleport (right-click the tray icon → Quit), then run the installer again.
 ; en.AppRunningOtherSession=Teleport may be running in another account on this computer.

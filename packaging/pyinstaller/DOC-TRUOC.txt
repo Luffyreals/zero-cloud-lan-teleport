@@ -25,9 +25,9 @@ TELEPORT (bản zip thử cho Windows) - ĐỌC TRƯỚC KHI CHẠY
 
 5. File nhận được và log
    - File nhận lưu vào thư mục Teleport trong thư mục Tải về (Downloads) của bạn, thường là
-     C:\Users\<tên bạn>\Downloads\Teleport. Màn hình chính của Teleport ghi đúng đường dẫn
-     ("Thư mục nhận"); mỗi file nhận xong có nút "Mở thư mục". Bản này chưa đổi được thư mục
-     nhận trong giao diện.
+     C:\Users\<tên bạn>\Downloads\Teleport. Dòng "Lưu vào: ..." ở chân màn hình chính ghi đúng
+     đường dẫn, kèm nút "Mở thư mục"; mỗi file nhận xong có nút "Hiện trong thư mục".
+   - Muốn đổi thư mục nhận: bấm nút "Đổi…" ở dòng "Lưu vào", hoặc vào trang Cài đặt.
    - Cài đặt, danh tính máy và danh sách máy đã ghép đôi nằm trong %APPDATA%\Teleport.
    - Log lỗi: %APPDATA%\Teleport\logs\teleport.log (chỉ có khi đã xảy ra lỗi hay cảnh báo;
      không chứa nội dung file).
