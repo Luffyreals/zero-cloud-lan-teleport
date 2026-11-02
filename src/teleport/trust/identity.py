@@ -10,6 +10,7 @@ Khi ghép đôi, bên khởi xướng ký `core.pairing_code.proof_payload` bằ
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import hashlib
 import json
@@ -38,6 +39,8 @@ CERT_FILE = "device.crt"
 KEY_FILE = "device.key"
 CN_PREFIX = "teleport-"
 IDENTITY_LOCK = "identity.lock"
+# Thư mục tạm riêng (0o700) chứa khóa riêng lúc đang ghi, xem `_create_identity`.
+KEY_STAGING_DIR = "identity.tmp"
 
 _LOCK_WAIT = 10.0  # giây chờ tiến trình khác tạo xong danh tính
 
@@ -267,6 +270,8 @@ def _create_or_finish(config_dir: Path, cert_path: Path, key_path: Path) -> None
     elif has_key and cert_tmp.exists():
         # Lần tạo trước bị ngắt giữa hai bước đổi tên; _load_identity kiểm khóa khớp chứng chỉ.
         os.replace(cert_tmp, cert_path)
+        with contextlib.suppress(OSError):  # chỉ là dọn rác: không chặn việc nạp danh tính
+            _remove_key_staging(config_dir)
     # Các trường hợp còn lại (thiếu một nửa): _load_identity báo IdentityError.
 
 
@@ -415,7 +420,15 @@ def verify_pairing_proof(peer: PeerCert, payload: bytes, signature: bytes) -> bo
 
 
 def _create_identity(cert_path: Path, key_path: Path) -> None:
-    """Ghi cả hai file ra `.tmp`, rồi đổi tên khóa trước, chứng chỉ sau. Gọi khi giữ `identity.lock`."""
+    """Ghi cả hai file ra `.tmp`, rồi đổi tên khóa trước, chứng chỉ sau. Gọi khi giữ `identity.lock`.
+
+    Khóa được ghi trong thư mục tạm riêng `KEY_STAGING_DIR` tạo bằng `os.mkdir(..., 0o700)`.
+    Trên Windows quyền 0o600 của file không có tác dụng, còn từ Python 3.12.4 mode 0o700 của
+    `mkdir` gắn một DACL được bảo vệ (chỉ SYSTEM, Administrators, OWNER RIGHTS); khóa kế thừa
+    DACL đó và `os.replace` trong cùng ổ giữ nguyên nó, nên khóa không mang ACL của thư mục
+    cấu hình (có thể là thư mục dùng chung chọn bằng `--config-dir`). Python cũ hơn: khóa kế
+    thừa ACL của thư mục cấu hình như trước.
+    """
     key = ec.generate_private_key(ec.SECP256R1())
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, CN_PREFIX + uuid.uuid4().hex)])
     cert = (
@@ -428,17 +441,30 @@ def _create_identity(cert_path: Path, key_path: Path) -> None:
         .not_valid_after(_NOT_VALID_AFTER)
         .sign(key, hashes.SHA256())
     )
-    # Khóa riêng lưu dạng chưa mã hóa cho đơn giản; trên Linux/macOS chỉ chủ sở hữu đọc được.
+    # Khóa riêng lưu dạng chưa mã hóa cho đơn giản; chỉ chủ sở hữu đọc được (Windows: xem docstring).
     key_pem = key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     )
-    key_tmp, cert_tmp = _tmp_path(key_path), _tmp_path(cert_path)
+    config_dir = key_path.parent
+    _remove_key_staging(config_dir)  # còn sót từ lần tạo bị ngắt: tạo lại để chắc có DACL mới
+    staging = config_dir / KEY_STAGING_DIR
+    os.mkdir(staging, 0o700)
+    key_tmp, cert_tmp = staging / _tmp_path(key_path).name, _tmp_path(cert_path)
     _write_durable(key_tmp, key_pem, 0o600)  # khóa riêng: chỉ chủ sở hữu đọc được
     _write_durable(cert_tmp, cert.public_bytes(serialization.Encoding.PEM), 0o644)  # chứng chỉ công khai
     os.replace(key_tmp, key_path)
+    staging.rmdir()
     os.replace(cert_tmp, cert_path)
+
+
+def _remove_key_staging(config_dir: Path) -> None:
+    """Xóa `KEY_STAGING_DIR` (và khóa `.tmp` bên trong) nếu có; có thứ khác bên trong → OSError."""
+    staging = config_dir / KEY_STAGING_DIR
+    (staging / _tmp_path(Path(KEY_FILE)).name).unlink(missing_ok=True)
+    with contextlib.suppress(FileNotFoundError):
+        staging.rmdir()
 
 
 def _tmp_path(path: Path) -> Path:
