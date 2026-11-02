@@ -67,6 +67,7 @@ hỏng. Thanh cuộn của `sidebar_scroll` vẽ đặc khi danh sách tràn (ch
 
 from __future__ import annotations
 
+import ctypes
 import functools
 import logging
 import sys
@@ -176,7 +177,6 @@ def _default_windows_build() -> int | None:
 def _default_high_contrast() -> bool:
     """Cờ `HCF_HIGHCONTRASTON` của `SystemParametersInfoW(SPI_GETHIGHCONTRAST)`; gọi lỗi → OSError."""
     if sys.platform == "win32":
-        import ctypes
         from ctypes import wintypes
 
         class _HighContrast(ctypes.Structure):
@@ -209,7 +209,6 @@ def _default_transparency_enabled() -> bool:
 def _user32() -> Any:
     """user32 riêng của module, đã đặt `argtypes` / `restype` (chỉ gọi trên Windows)."""
     if sys.platform == "win32":
-        import ctypes
         from ctypes import c_uint, c_void_p, wintypes
 
         user32 = ctypes.WinDLL("user32")
@@ -223,7 +222,6 @@ def _user32() -> Any:
 def _dwmapi() -> Any:
     """dwmapi riêng của module, `restype = c_long` (không `HRESULT`: kiểu đó tự ném)."""
     if sys.platform == "win32":
-        import ctypes
         from ctypes import c_long, c_uint32, c_void_p
 
         dwmapi = ctypes.WinDLL("dwmapi")
@@ -238,7 +236,6 @@ def _dwmapi() -> Any:
 def _default_dwm_extend_frame(hwnd: int, margin: int) -> int:
     """`DwmExtendFrameIntoClientArea` với bốn lề bằng `margin` (-1: cả cửa sổ; 0: gỡ); trả HRESULT."""
     if sys.platform == "win32":
-        import ctypes
 
         class _Margins(ctypes.Structure):
             _fields_ = [(name, ctypes.c_int) for name in ("left", "right", "top", "bottom")]
@@ -250,8 +247,6 @@ def _default_dwm_extend_frame(hwnd: int, margin: int) -> int:
 
 def _set_attribute(hwnd: int, attribute: int, value: int) -> int:
     if sys.platform == "win32":
-        import ctypes
-
         data = ctypes.c_int(value)  # DWORD / BOOL: 4 byte
         return int(_dwmapi().DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(data), ctypes.sizeof(data)))
     return E_FAIL
@@ -314,25 +309,21 @@ def _hresult(call: Callable[[], int]) -> int:
 # ---- Theo dõi cài đặt của hệ điều hành -----------------------------------------------------------
 
 
-if sys.platform == "win32":
-    import ctypes
+class _MSG(ctypes.Structure):
+    """Đầu của `MSG` (Win32) đủ để đọc mã tin. Khai báo ở mọi nền tảng (chỉ kiểu `ctypes` cơ bản) để
+    test bộ lọc native chạy được trên Linux/macOS; chỉ Qt trên Windows gửi `windows_generic_MSG`."""
 
-    class _MSG(ctypes.Structure):
-        """Đầu của `MSG` (Win32) đủ để đọc mã tin."""
-
-        _fields_ = [
-            ("hwnd", ctypes.c_void_p),
-            ("message", ctypes.c_uint),
-            ("wParam", ctypes.c_size_t),
-            ("lParam", ctypes.c_ssize_t),
-        ]
+    _fields_ = [
+        ("hwnd", ctypes.c_void_p),
+        ("message", ctypes.c_uint),
+        ("wParam", ctypes.c_size_t),
+        ("lParam", ctypes.c_ssize_t),
+    ]
 
 
-def _message_id(message: int) -> int | None:
-    """Mã tin của con trỏ `MSG*`; ngoài Windows → None."""
-    if sys.platform == "win32":
-        return int(_MSG.from_address(int(message)).message)
-    return None
+def _message_id(message: int) -> int:
+    """Mã tin của con trỏ `MSG*` (chỉ gọi khi loại sự kiện là `windows_generic_MSG`)."""
+    return int(_MSG.from_address(int(message)).message)
 
 
 class _SettingsWatcher(QAbstractNativeEventFilter):
