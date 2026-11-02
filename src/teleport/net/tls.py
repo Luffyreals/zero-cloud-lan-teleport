@@ -64,7 +64,8 @@ def server_context(
     # client, nên máy vừa bị hủy ghép đôi có thể vào lại bằng session cũ. Mỗi kết nối
     # đều bắt tay đầy đủ với danh sách tin cậy hiện tại (docs/protocol.md mục 2.2).
     ctx.num_tickets = 0
-    if cadata := "".join(trusted_certs):
+    # Nối bằng xuống dòng: PEM thiếu "\n" cuối sẽ dính dòng END vào dòng BEGIN của PEM sau.
+    if cadata := "\n".join(trusted_certs):
         ctx.load_verify_locations(cadata=cadata)
     return ctx
 

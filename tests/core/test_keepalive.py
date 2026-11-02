@@ -134,7 +134,7 @@ def test_constructor_rejects_non_number_now(bad_now):
         Keepalive(bad_now)
 
 
-@pytest.mark.parametrize("bad_now", [math.nan, math.inf, -math.inf])
+@pytest.mark.parametrize("bad_now", [math.nan, math.inf, -math.inf, 10**400, -(10**400)])
 def test_constructor_rejects_non_finite_now(bad_now):
     with pytest.raises(ValueError):
         Keepalive(bad_now)
@@ -149,7 +149,7 @@ def test_methods_reject_non_number_now(method, bad_now):
 
 
 @pytest.mark.parametrize("method", METHODS)
-@pytest.mark.parametrize("bad_now", [math.nan, math.inf, -math.inf])
+@pytest.mark.parametrize("bad_now", [math.nan, math.inf, -math.inf, 10**400, -(10**400)])
 def test_methods_reject_non_finite_now(method, bad_now):
     k = Keepalive(T0)
     with pytest.raises(ValueError):

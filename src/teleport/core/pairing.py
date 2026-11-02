@@ -47,7 +47,6 @@ Giới hạn số kết nối ẩn danh là việc của `core.admission` (tần
 
 from __future__ import annotations
 
-import math
 import re
 from collections import deque
 from collections.abc import Callable, Iterable
@@ -68,6 +67,7 @@ from teleport.core.messages import (
     PairReveal,
     validate_device_id,
 )
+from teleport.core.numbers import is_finite
 from teleport.core.pairing_code import (
     NONCE_SIZE,
     PROOF_SIGNATURE_SIZE,
@@ -309,7 +309,7 @@ def _check_now(now: object, last: float | None) -> float:
     """`now` phải là số hữu hạn và không nhỏ hơn lần gọi trước của cùng đối tượng."""
     if isinstance(now, bool) or not isinstance(now, int | float):
         raise TypeError("now phải là số giây (đồng hồ monotonic)")
-    if not math.isfinite(now):
+    if not is_finite(now):
         raise ValueError("now phải là số hữu hạn")
     if last is not None and now < last:
         raise ValueError("now không được nhỏ hơn lần gọi trước")

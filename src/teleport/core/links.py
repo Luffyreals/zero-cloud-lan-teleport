@@ -87,12 +87,12 @@ Luật chính:
 from __future__ import annotations
 
 import ipaddress
-import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 from teleport.core.messages import MessageError, validate_device_id
+from teleport.core.numbers import is_finite
 
 # Thời gian tính bằng giây; đọc lúc dùng để test rút ngắn được bằng monkeypatch.
 # protocol §6.1: kết nối cũ đã mở ≥ 15 s thì kết nối mới thay. Phải lớn hơn hạn mở kết nối
@@ -682,7 +682,7 @@ class LinkTracker:
     def _check_now(self, now: object) -> float:
         if isinstance(now, bool) or not isinstance(now, int | float):
             raise TypeError("now phải là số giây (đồng hồ monotonic)")
-        if not math.isfinite(now):
+        if not is_finite(now):
             raise ValueError("now phải là số hữu hạn")
         if self._last_now is not None and now < self._last_now:
             raise ValueError("now không được giảm")
