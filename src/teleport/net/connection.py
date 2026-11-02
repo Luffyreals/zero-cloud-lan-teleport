@@ -108,6 +108,14 @@ _SEND_CHUNK = 64 * 1024  # đoạn ghi; trên kết nối dữ liệu bằng đo
 _READ_CHUNK = 64 * 1024
 _MAX_ADDRESSES = 16  # số địa chỉ tối đa cho mỗi lần mở kết nối (bằng số địa chỉ mDNS quảng bá)
 
+# Trần tổng số byte đọc bỏ sau close_notify của ta, cho mỗi lần đóng gọn
+# (`_discard_after_close_notify`). Vượt trần thì thôi đọc bỏ và để asyncio cắt kết nối như
+# trước (abort), để máy kia gửi lũ không giữ CPU của node suốt lần đóng. Ghép đôi: chỉ có
+# message nhỏ. Điều khiển: đủ cho một khung lớn nhất máy kia đang gửi dở (mảnh clip) cộng
+# một khung nữa (ping, pong…).
+_DISCARD_LIMIT_PAIRING = 64 * 1024
+_DISCARD_LIMIT_CONTROL = 2 * (MAX_MESSAGE_SIZE + HEADER.size)
+
 _TASK_NAME = "teleport.connection"
 _BROADCAST = ipaddress.IPv4Address("255.255.255.255")
 _CONTROL_OPEN_FRAME = encode_message(to_dict(ControlOpen()))
@@ -266,6 +274,86 @@ def _ssl_shutdown_timeout(kind: ConnectionKind | None) -> float:
     return max(CLOSE_TIMEOUT, DRAIN_TIMEOUT)
 
 
+_DISCARD_HOOK = "_teleport_discard_after_close_notify"  # đánh dấu trên SSLProtocol: đã cài móc
+
+
+def _discard_after_close_notify(writer: asyncio.StreamWriter, *, limit: int = _DISCARD_LIMIT_PAIRING) -> None:
+    """Cài móc để lúc đóng gọn, dữ liệu máy kia gửi sau close_notify của ta bị đọc bỏ.
+
+    Gọi ngay trước `writer.close()`. Không có móc: máy kia còn gửi (ping, message) trước
+    khi đọc tới close_notify của ta thì `unwrap()` của `asyncio.sslproto` ném
+    `APPLICATION_DATA_AFTER_CLOSE_NOTIFY`, transport bị cắt khi còn dữ liệu chưa đọc →
+    RST, và máy kia (Windows) bỏ luôn phần đuôi ta đã gửi còn nằm trong bộ đệm nhận của
+    nó. Móc bọc `_do_shutdown` **trên instance** SSLProtocol: trước khi gọi bản gốc, đọc
+    bỏ mọi bản ghi đã giải mã được (OpenSSL cho đọc sau khi đã gửi close_notify) tới khi
+    hết dữ liệu (`SSLWantReadError`) hay gặp close_notify của máy kia
+    (`SSLZeroReturnError`); lỗi SSL khác để bản gốc xử lý như cũ. Rồi gỡ tạm dừng đọc
+    socket (`_resume_socket_reading`), vì ở trạng thái SHUTDOWN không ai gỡ, close_notify
+    của máy kia sẽ không tới. Hạn đóng không đổi.
+
+    Tổng số byte đọc bỏ của cả lần đóng tối đa `limit` (bên gọi chọn theo loại kết nối:
+    `_DISCARD_LIMIT_PAIRING` / `_DISCARD_LIMIT_CONTROL`): vượt thì thôi đọc bỏ, bản gốc gặp
+    dữ liệu sau close_notify và cắt kết nối như hành vi cũ.
+
+    Dựa vào thuộc tính nội bộ của `asyncio.sslproto` (giống nhau ở Python 3.12–3.14): thiếu
+    thuộc tính nào thì ghi log DEBUG và giữ hành vi cũ, không raise. Gọi nhiều lần chỉ cài
+    một móc.
+    """
+    proto = getattr(writer.transport, "_ssl_protocol", None)
+    if getattr(proto, _DISCARD_HOOK, False):
+        return
+    original = getattr(proto, "_do_shutdown", None)
+    if (
+        not callable(original)
+        or getattr(proto, "_sslobj", None) is None
+        or not hasattr(proto, "_eof_received")
+    ):
+        log.debug("không cài được móc đọc bỏ lúc đóng (asyncio.sslproto đã đổi?)")
+        return
+
+    discarded = 0  # số byte đã đọc bỏ trong lần đóng này
+
+    def do_shutdown() -> None:
+        nonlocal discarded
+        sslobj = getattr(proto, "_sslobj", None)
+        if sslobj is not None and discarded <= limit and not getattr(proto, "_eof_received", True):
+            try:
+                # Dữ liệu sau close_notify của ta: không giao cho tầng trên.
+                while discarded <= limit and (chunk := sslobj.read(_READ_CHUNK)):
+                    discarded += len(chunk)
+            except (ssl.SSLWantReadError, ssl.SSLZeroReturnError):
+                pass  # hết dữ liệu đã tới, hoặc máy kia đã trả close_notify
+            except ssl.SSLError:
+                pass  # bản gốc gặp lỗi SSL trong `unwrap()` (không nhất thiết cùng lỗi) và abort như cũ
+            if discarded > limit:
+                log.debug("đọc bỏ lúc đóng quá %d byte, để asyncio cắt kết nối", limit)
+            else:
+                _resume_socket_reading(proto)
+        original()
+
+    setattr(proto, "_do_shutdown", do_shutdown)  # noqa: B010 (ghi đè trên instance, không phải lớp)
+    setattr(proto, _DISCARD_HOOK, True)
+
+
+def _resume_socket_reading(proto: object) -> None:
+    """Gỡ tạm dừng đọc socket lúc đóng gọn, sau khi đã đọc bỏ (móc của `_discard_after_close_notify`).
+
+    Hai chỗ có thể đã tạm dừng: bộ đệm TLS của SSLProtocol đầy (`_control_ssl_reading` tự
+    gỡ khi bộ đệm đã cạn), và phía `Listener`, StreamReader giữ transport TCP gốc nên tạm
+    dừng thẳng trên socket khi tầng trên không đọc (comment ở `Listener._handle`); ở trạng
+    thái SHUTDOWN không ai gỡ chỗ thứ hai, nên gỡ ở đây khi bộ đệm TLS không còn đầy.
+    """
+    try:
+        control = getattr(proto, "_control_ssl_reading", None)
+        if callable(control):
+            control()
+        raw = getattr(proto, "_transport", None)
+        if raw is not None and not getattr(proto, "_ssl_reading_paused", True) and not raw.is_reading():
+            raw.resume_reading()
+    except Exception:  # transport đã đóng hoặc đang đóng dở
+        log.debug("gỡ tạm dừng đọc lúc đóng thất bại", exc_info=True)
+
+
 def _byte_view(data: object, name: str) -> memoryview:
     """`data` thành memoryview một chiều kiểu byte, nên `nbytes` là số byte thật.
 
@@ -362,6 +450,8 @@ class Connection:
         self._receiving = False  # đang có một receive() / read_*() chờ
         self._frame_started = False  # lần đọc hiện tại đã đọc ít nhất một byte của khung
         self._closed = False
+        # Chỉ chiều gửi đã khóa: gửi lỗi sau khi máy kia đã đóng gọn (xem `send`); vẫn đọc được.
+        self._send_closed = False
         self._close_called = False  # máy này đã gọi close() (khác với tự abort khi lỗi)
         self._close_done = asyncio.Event()
         # Móc của ControlChannel (keepalive): gọi sau mỗi đoạn gửi xong / mỗi lần đọc được dữ liệu.
@@ -404,6 +494,10 @@ class Connection:
 
     @property
     def closed(self) -> bool:
+        """True sau `close()`, `abort()` hay một lỗi làm hỏng kết nối.
+
+        Gửi lỗi vì máy kia đã đóng gọn (xem `send`) chỉ khóa chiều gửi, không làm `closed` True.
+        """
         return self._closed
 
     async def send(self, msg: Message) -> None:
@@ -414,6 +508,13 @@ class Connection:
         lỗi socket/TLS, hoặc một đoạn không gửi xong trong `DRAIN_TIMEOUT` →
         ConnectionLostError (kết nối bị đóng ngay). Các lần gửi đồng thời không xen byte
         vào nhau.
+
+        Ngoại lệ: lỗi socket/TLS (không phải hết `DRAIN_TIMEOUT`) khi máy kia **đã đóng gọn**
+        trước đó (đã nhận EOF: close_notify hay FIN trần, không lỗi đọc) → ConnectionLostError
+        nhưng chỉ khóa chiều gửi: không abort, `closed` vẫn False, các lần gửi sau →
+        ConnectionLostError ngay mà không ghi gì, còn `receive` vẫn trả nốt các message máy
+        kia đã gửi trước khi đóng rồi None. Nhờ vậy một message trả lời gửi hỏng không làm
+        mất `cancel` còn trong bộ đệm đọc. Tầng trên vẫn phải `close()` như thường.
 
         Bị hủy (ví dụ do `asyncio.timeout` của bên gọi) khi đã ghi ít nhất một đoạn của
         khung → kết nối bị đóng ngay (abort), vì máy kia có thể đã nhận nửa khung; lần gửi
@@ -441,10 +542,10 @@ class Connection:
         Ghi theo đoạn ≤ 64 KiB, mỗi đoạn `drain()` tối đa `DRAIN_TIMEOUT`, báo keepalive
         sau mỗi đoạn. Bị hủy sau khi đã ghi một đoạn → abort (xem `send`).
         """
-        if self._closed:
+        if self._closed or self._send_closed:
             raise ConnectionLostError("kết nối đã đóng")
         async with self._send_lock:
-            if self._closed:
+            if self._closed or self._send_closed:
                 raise ConnectionLostError("kết nối đã đóng")
             data = frame() if callable(frame) else frame
             if data is None:
@@ -458,7 +559,12 @@ class Connection:
                     if self._on_sent is not None:
                         self._on_sent()
             except OSError as e:  # gồm ssl.SSLError và TimeoutError (drain quá DRAIN_TIMEOUT)
-                self._abort()
+                if not isinstance(e, TimeoutError) and self._peer_closed_cleanly():
+                    # Máy kia đã đóng gọn: phần nó gửi trước đó vẫn nằm trong bộ đệm đọc.
+                    log.debug("%r: gửi thất bại sau khi máy kia đã đóng gọn, khóa chiều gửi", self)
+                    self._send_closed = True
+                else:
+                    self._abort()
                 raise ConnectionLostError(f"gửi thất bại: {type(e).__name__}") from e
             except asyncio.CancelledError:
                 if written:  # máy kia có thể đã nhận nửa khung: không dùng tiếp được
@@ -467,6 +573,20 @@ class Connection:
                 raise
             if self._closed:
                 raise ConnectionLostError("kết nối đã đóng trong lúc gửi")
+
+    def _peer_closed_cleanly(self) -> bool:
+        """Kết nối ghép đôi / điều khiển: máy kia đã đóng gọn (reader đã nhận EOF, không lỗi đọc).
+
+        EOF ở đây là close_notify hay FIN trần (asyncio không phân biệt với reader).
+
+        `StreamReader` không có API công khai cho “đã nhận EOF” khi bộ đệm còn dữ liệu
+        (`at_eof()` cần bộ đệm rỗng), nên đọc `_eof` qua getattr; thiếu thì coi như chưa
+        đóng gọn (giữ hành vi cũ: abort). Reset hay lỗi TLS đặt `exception()` của reader.
+        """
+        if self._kind is ConnectionKind.DATA or self._closed:
+            return False
+        reader = self._reader
+        return getattr(reader, "_eof", False) is True and reader.exception() is None
 
     async def receive(self) -> Message | None:
         """Đọc một message đã kiểm (`parse_message`, rồi đúng loại kết nối).
@@ -480,7 +600,8 @@ class Connection:
         Không tự đặt thời gian chờ; bên gọi bọc trong `asyncio.timeout`. Bị hủy khi đã đọc
         một phần khung → kết nối bị đóng ngay (abort), vì phần đã đọc không trả lại được và
         đọc tiếp sẽ lệch khung; lần dùng sau → ConnectionLostError. Bị hủy khi chưa đọc
-        byte nào của khung → kết nối vẫn dùng được, message kế tiếp không bị mất.
+        byte nào của khung → kết nối vẫn dùng được, message kế tiếp không bị mất. Chiều gửi
+        đã khóa vì máy kia đóng gọn (xem `send`) không ảnh hưởng `receive`.
         """
         if self._kind is ConnectionKind.DATA:
             raise ValueError("kết nối dữ liệu không chở message: dùng read_block / read_raw")
@@ -840,6 +961,14 @@ class Connection:
         lần đứt kết nối dữ liệu (protocol mục 2.3). `ssl_shutdown_timeout` của transport
         được đặt lúc mở, không nhỏ hơn hạn này.
 
+        Kết nối ghép đôi và điều khiển: trong lúc chờ close_notify, dữ liệu máy kia gửi sau
+        close_notify của ta (ping, message) bị đọc bỏ, không giao cho tầng trên, để transport
+        không bị cắt (RST) làm máy kia mất phần đuôi ta đã gửi (`_discard_after_close_notify`).
+        Đọc bỏ có trần theo loại kết nối (`_DISCARD_LIMIT_PAIRING`, `_DISCARD_LIMIT_CONTROL`):
+        máy kia gửi quá trần thì kết nối bị cắt như trước.
+        Kết nối dữ liệu giữ hành vi cũ: dữ liệu chỉ đi một chiều, bên nhận đóng giữa chừng
+        thì RST là đúng ý, để bên gửi dừng ngay.
+
         Gọi nhiều lần hay đồng thời đều được, không raise; các lời gọi sau chờ lời gọi đầu.
         Bị hủy giữa chừng thì abort rồi mới để CancelledError bay ra.
         """
@@ -850,6 +979,10 @@ class Connection:
         self._closed = True
         timeout = DRAIN_TIMEOUT if self._kind is ConnectionKind.DATA else CLOSE_TIMEOUT
         try:
+            if self._kind is ConnectionKind.PAIRING:
+                _discard_after_close_notify(self._writer, limit=_DISCARD_LIMIT_PAIRING)
+            elif self._kind is ConnectionKind.CONTROL:
+                _discard_after_close_notify(self._writer, limit=_DISCARD_LIMIT_CONTROL)
             self._writer.close()
             async with asyncio.timeout(timeout):
                 await self._writer.wait_closed()
@@ -884,6 +1017,19 @@ class CloseReason(StrEnum):
 
 def _lost_reason(conn: Connection) -> CloseReason:
     return CloseReason.LOCAL if conn._close_called else CloseReason.CONNECTION_LOST
+
+
+async def _after_send_lost(conn: Connection) -> CloseReason:
+    """Keepalive / `_pong_loop` gửi hỏng: kết nối hỏng thì kết thúc với lý do mất kết nối.
+
+    Chỉ chiều gửi khóa (máy kia đã đóng gọn, `closed` vẫn False) thì thôi gửi và chờ tới
+    khi bị hủy, để vòng đọc trả nốt các message đã đệm rồi kết thúc với `PEER_CLOSED`;
+    vòng đọc không chờ socket nữa (EOF đã tới) nên không cần keepalive.
+    """
+    if conn.closed or not conn._send_closed:
+        return _lost_reason(conn)
+    await asyncio.get_running_loop().create_future()  # chỉ kết thúc khi `run` hủy task này
+    raise AssertionError("không tới được")
 
 
 class _PendingPong:
@@ -952,6 +1098,9 @@ class ControlChannel:
         đọc, rồi keepalive, rồi `_pong_loop`. Lúc dọn, còn `pong` chờ mà kết nối chưa hỏng
         thì gửi nốt rồi mới đóng gọn; cả hai dùng chung một hạn `CLOSE_TIMEOUT` (tổng thời
         gian dọn ≤ `CLOSE_TIMEOUT`), quá hạn thì abort. Gọi lần hai → RuntimeError.
+        `ping` / `pong` gửi hỏng vì máy kia đã đóng gọn (chỉ khóa chiều gửi, xem
+        `Connection.send`) không kết thúc `run`: vòng đọc giao nốt các message đã đệm rồi
+        kết thúc với `PEER_CLOSED`.
         Bị hủy lần nữa trong lúc dọn → abort kết nối ngay; các task con kết thúc ở vòng
         lặp kế tiếp.
         """
@@ -1039,7 +1188,7 @@ class ControlChannel:
                 try:
                     await self._conn.send(Ping(t=t))
                 except ConnectionLostError:
-                    return _lost_reason(self._conn)
+                    return await _after_send_lost(self._conn)
                 continue
             await asyncio.sleep(max(0.0, keepalive.next_wakeup() - loop.time()))
 
@@ -1053,7 +1202,7 @@ class ControlChannel:
             try:
                 await self._send_pong(pending)
             except ConnectionLostError:
-                return _lost_reason(self._conn)
+                return await _after_send_lost(self._conn)
 
     async def _read_loop(self, on_message: Callable[[Message], None], pending: _PendingPong) -> CloseReason:
         conn = self._conn

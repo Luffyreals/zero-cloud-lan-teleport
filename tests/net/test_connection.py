@@ -15,6 +15,7 @@ import socket
 import ssl
 import struct
 import sys
+import threading
 import time
 from types import SimpleNamespace
 
@@ -31,6 +32,7 @@ from teleport.core.framing import HEADER, MAX_PAIRING_MESSAGE_SIZE, FramingError
 from teleport.core.messages import (
     MAX_SAFE_INTEGER,
     PROTOCOL_VERSION,
+    Clipboard,
     ConnectionKind,
     ControlOpen,
     DataOpen,
@@ -3874,3 +3876,673 @@ async def test_allow_anonymous_none_keeps_old_behaviour(fast, listener_factory, 
     assert (await peer.read_hello())["device_id"] == ids.server.device_id
     explicit = Listener(ids.server, h.hello, [], h.is_trusted, h.on_connection, allow_anonymous=None)
     await explicit.close()
+
+
+# =================================================================================================
+# CN: đóng TLS khi máy kia còn gửi sau close_notify (spec-close-notify, (a)–(f))
+# =================================================================================================
+#
+# Khi `Connection.close` của kết nối ghép đôi / điều khiển đã gửi close_notify và đang chờ close_notify
+# của máy kia, dữ liệu máy kia gửi trong lúc đó (ping, message) phải bị đọc bỏ, không làm hỏng lần đóng:
+# nếu không, asyncio ném APPLICATION_DATA_AFTER_CLOSE_NOTIFY, cắt socket (RST) và máy kia mất phần
+# đuôi ta đã gửi. Kết nối dữ liệu giữ hành vi cũ.
+
+_CN_CLIP_DATA = 256 * 1024  # mỗi clip 256 KiB văn bản: 8 clip = 2 MiB, máy kia đọc chậm mất vài giây
+_CN_CLIPS = 8
+_CN_TAIL = Ping(t=424242)  # message cuối cùng ta gửi trước close(): máy kia phải nhận được
+
+
+def _cn_clip(index: int) -> Clipboard:
+    return Clipboard(
+        clip_id="cd" * 16,
+        kind="text",
+        sha256="ef" * 32,
+        total=_CN_CLIP_DATA * _CN_CLIPS,
+        index=index,
+        count=_CN_CLIPS,
+        data="x" * _CN_CLIP_DATA,
+    )
+
+
+class _SlowChattyPeer:
+    """Máy kia (client thô) đọc chậm và gửi `ping` đều đặn, kể cả sau khi ta đã gửi close_notify.
+
+    Đọc tới EOF thì thôi gửi và đóng gọn (gửi close_notify của nó). `clean_eof` True nghĩa là kết thúc
+    bằng EOF gọn, không phải lỗi (reset, lỗi SSL).
+    """
+
+    def __init__(self, peer, *, chunk: int = 16 * 1024, read_pause: float = 0.02, ping_every: float = 0.01):
+        self.peer = peer
+        self.chunk = chunk
+        self.read_pause = read_pause
+        self.ping_every = ping_every
+        self.data = bytearray()
+        self.clean_eof = False
+        self.read_error: BaseException | None = None
+        self.pings_sent = 0
+        self._stop = asyncio.Event()
+        self._pinger = asyncio.create_task(self._ping_loop())
+        self.done = asyncio.create_task(self._read_loop())
+
+    async def _ping_loop(self) -> None:
+        t = 0
+        while not self._stop.is_set():
+            t += 1
+            try:
+                self.peer.writer.write(encode_message({"type": "ping", "t": t}))
+                await self.peer.writer.drain()
+            except (*CLOSED, RuntimeError):
+                return
+            self.pings_sent += 1
+            await asyncio.sleep(self.ping_every)
+
+    async def _read_loop(self) -> None:
+        try:
+            while True:
+                try:
+                    chunk = await self.peer.reader.read(self.chunk)
+                except CLOSED as e:
+                    self.read_error = e
+                    return
+                if not chunk:
+                    self.clean_eof = True
+                    return
+                self.data += chunk
+                if self.read_pause:
+                    await asyncio.sleep(self.read_pause)
+        finally:
+            self._stop.set()
+            await cancel_wait(self._pinger)
+            await self.peer.close_gracefully()
+
+    async def cancel(self) -> None:
+        self._stop.set()
+        await cancel_wait(self._pinger, self.done)
+
+
+@pytest.mark.integration
+async def test_control_close_delivers_tail_while_peer_keeps_pinging(
+    fast, monkeypatch, listener_factory, raw_client, ids
+):
+    """(a) Máy kia đọc chậm và gửi ping liên tục: close() vẫn đóng gọn, máy kia nhận đủ phần đuôi.
+
+    Ta gửi 2 MiB clip + một `ping` đánh dấu rồi close(). Lúc close_notify của ta đi, máy kia còn nhiều
+    dữ liệu chưa đọc và vẫn gửi ping. Phải: close() xong trước CLOSE_TIMEOUT, máy kia nhận đủ mọi
+    khung theo đúng thứ tự (khung cuối là `ping` đánh dấu) rồi thấy EOF gọn, không reset.
+    """
+    close_timeout = 5.0
+    monkeypatch.setattr(connection, "CLOSE_TIMEOUT", close_timeout)
+    monkeypatch.setattr(connection, "DRAIN_TIMEOUT", 10.0)  # máy kia đọc chậm: gửi không được bỏ cuộc
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await raw_control(raw_client, h, ids)
+    chatty = _SlowChattyPeer(peer)
+    try:
+        for i in range(_CN_CLIPS):
+            await server.send(_cn_clip(i))
+        await server.send(_CN_TAIL)
+        pings_before_close = chatty.pings_sent
+        start = time.monotonic()
+        await asyncio.wait_for(server.close(), close_timeout + 2.0)
+        elapsed = time.monotonic() - start
+        await asyncio.wait_for(asyncio.shield(chatty.done), 10.0)
+    finally:
+        await chatty.cancel()
+
+    assert server.closed
+    assert chatty.pings_sent > pings_before_close, "phép thử vô nghĩa: máy kia không gửi gì sau close()"
+    assert chatty.read_error is None, (
+        f"máy kia thấy lỗi thay cho EOF gọn: {chatty.read_error!r} (đã nhận {len(chatty.data)} byte)"
+    )
+    assert chatty.clean_eof
+    frames = frames_in(bytes(chatty.data))
+    assert [f["type"] for f in frames] == ["clipboard"] * _CN_CLIPS + ["ping"], (
+        f"thiếu phần đuôi: nhận {len(frames)} khung, {len(chatty.data)} byte"
+    )
+    assert [f["index"] for f in frames[:-1]] == list(range(_CN_CLIPS))
+    assert parse_message(frames[-1]) == _CN_TAIL
+    assert elapsed < close_timeout, f"close() mất {elapsed:.2f} s: đóng gọn phải xong trước CLOSE_TIMEOUT"
+
+
+def _flood_until(sock: ssl.SSLSocket, stop: threading.Event) -> None:
+    """Gửi `ping` liên tục, không bao giờ đọc (nên không bao giờ trả close_notify), tới khi `stop` hay lỗi."""
+    batch = b"".join(encode_message({"type": "ping", "t": i}) for i in range(64))
+    with contextlib.suppress(OSError, ValueError):
+        while not stop.is_set():
+            sock.sendall(batch)
+            time.sleep(0.002)
+
+
+@pytest.mark.integration
+async def test_control_close_is_bounded_when_peer_floods_and_never_answers(fast, listener_factory, ids):
+    """(b) Máy kia gửi mãi và không bao giờ trả close_notify → close() vẫn ≤ CLOSE_TIMEOUT + biên.
+
+    CLOSE_TIMEOUT = 0,5 s (fixture `fast`, vá trước khi mở kết nối). Việc đọc bỏ dữ liệu tới sau
+    close_notify không được kéo dài lần đóng, cũng không treo vòng lặp.
+    """
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    sock = await asyncio.to_thread(sync_open_control, h.port, ids.b)
+    stop = threading.Event()
+    flooder = asyncio.create_task(asyncio.to_thread(_flood_until, sock, stop))
+    try:
+        server = await h.next()
+        await asyncio.sleep(0.1)
+        assert not flooder.done(), "phép thử vô nghĩa: máy kia không còn gửi"
+        start = time.monotonic()
+        await asyncio.wait_for(server.close(), 5.0)
+        elapsed = time.monotonic() - start
+        assert elapsed <= 0.5 + 1.0, f"close() mất {elapsed:.2f} s"
+        assert server.closed
+    finally:
+        stop.set()
+        await asyncio.wait_for(flooder, 10.0)
+        sock.close()
+
+
+async def _wait_stalled(progress, what: str, *, quiet: float = 0.5, timeout: float = 15.0) -> None:
+    """Chờ tới khi `progress()` đứng yên `quiet` giây liền (bên gửi kẹt vì bên kia không đọc)."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        before = progress()
+        await asyncio.sleep(quiet)
+        if progress() == before:
+            return
+    raise AssertionError(f"hết {timeout} s mà {what} vẫn chưa kẹt (đã gửi {progress()} byte)")
+
+
+@pytest.mark.integration
+async def test_listener_side_close_with_full_read_buffer_still_closes_cleanly(
+    fast, monkeypatch, listener_factory, raw_client, ids
+):
+    """(f), phía Listener: tầng trên không đọc, máy kia gửi tới khi bộ đệm đọc đầy (đọc socket bị tạm
+    dừng) rồi close().
+
+    Phải: dữ liệu đã nằm trong bộ đệm bị bỏ, việc đọc socket được gỡ tạm dừng để close_notify của máy
+    kia tới được: close() xong gọn trước CLOSE_TIMEOUT, máy kia nhận `ping` đánh dấu rồi EOF gọn,
+    không reset.
+    """
+    close_timeout = 5.0
+    monkeypatch.setattr(connection, "CLOSE_TIMEOUT", close_timeout)
+    monkeypatch.setattr(connection, "DRAIN_TIMEOUT", 10.0)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await raw_control(raw_client, h, ids)
+    batch = b"".join(encode_message({"type": "ping", "t": i}) for i in range(2048))
+    drained = 0
+
+    async def flood() -> None:
+        nonlocal drained
+        with contextlib.suppress(*CLOSED, RuntimeError):
+            while drained < 64 * 1024 * 1024:
+                peer.writer.write(batch)
+                await peer.writer.drain()
+                drained += len(batch)
+
+    flooder = asyncio.create_task(flood())
+    reader = None
+    try:
+        await _wait_stalled(lambda: drained, "máy kia gửi")
+        reader = _SlowChattyPeer(peer, read_pause=0.0, ping_every=3600.0)
+        await server.send(_CN_TAIL)
+        start = time.monotonic()
+        await asyncio.wait_for(server.close(), close_timeout + 2.0)
+        elapsed = time.monotonic() - start
+        await asyncio.wait_for(asyncio.shield(reader.done), 10.0)
+    finally:
+        await cancel_wait(flooder)
+        if reader is not None:
+            await reader.cancel()
+
+    assert reader.read_error is None, f"máy kia thấy lỗi thay cho EOF gọn: {reader.read_error!r}"
+    assert reader.clean_eof
+    assert [parse_message(f) for f in frames_in(bytes(reader.data))] == [_CN_TAIL]
+    assert elapsed < close_timeout, f"close() mất {elapsed:.2f} s: đóng gọn phải xong trước CLOSE_TIMEOUT"
+
+
+@pytest.mark.integration
+async def test_client_side_close_with_paused_ssl_reading_still_closes_cleanly(
+    fast, monkeypatch, listener_factory, ids
+):
+    """(f), phía client (`open_control`): tầng trên không đọc, máy kia gửi tới khi bộ đệm đọc TLS đầy
+    (`_ssl_reading_paused`) rồi close().
+
+    Như bản phía Listener: close() xong gọn trước CLOSE_TIMEOUT, máy kia nhận `ping` đánh dấu rồi
+    thấy EOF gọn (`receive` trả None), không ConnectionLostError.
+    """
+    close_timeout = 5.0
+    monkeypatch.setattr(connection, "CLOSE_TIMEOUT", close_timeout)
+    monkeypatch.setattr(connection, "DRAIN_TIMEOUT", 10.0)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    conn = await b_control(h, ids)
+    remote = await h.next()
+    stop = asyncio.Event()
+    sent = 0
+    got: list = []
+    outcome: list = []
+
+    async def flood() -> None:
+        nonlocal sent
+        with contextlib.suppress(ConnectionLostError):
+            while not stop.is_set():
+                await remote.send(Ping(t=sent))
+                sent += 1
+
+    async def read_until_eof() -> None:
+        try:
+            while (msg := await remote.receive()) is not None:
+                got.append(msg)
+            outcome.append("eof")
+        except ConnectionLostError as e:
+            outcome.append(e)
+        stop.set()
+        await asyncio.wait_for(asyncio.shield(flooder), 3.0)
+        await remote.close()
+
+    flooder = asyncio.create_task(flood())
+    remote_reader = None
+    try:
+        await _wait_stalled(lambda: sent, "máy kia gửi")
+        proto = conn._writer.transport._ssl_protocol
+        assert getattr(proto, "_ssl_reading_paused", True), "phép thử vô nghĩa: đọc TLS chưa bị tạm dừng"
+        remote_reader = asyncio.create_task(read_until_eof())
+        await conn.send(_CN_TAIL)
+        start = time.monotonic()
+        await asyncio.wait_for(conn.close(), close_timeout + 2.0)
+        elapsed = time.monotonic() - start
+        await asyncio.wait_for(asyncio.shield(remote_reader), 10.0)
+    finally:
+        stop.set()
+        await cancel_wait(*(t for t in (flooder, remote_reader) if t is not None))
+        await remote.close()
+
+    assert outcome == ["eof"], f"máy kia thấy lỗi thay cho EOF gọn: {outcome!r}"
+    assert got == [_CN_TAIL]
+    assert elapsed < close_timeout, f"close() mất {elapsed:.2f} s: đóng gọn phải xong trước CLOSE_TIMEOUT"
+
+
+# --- (c), (e): hook chỉ cài cho kết nối ghép đôi và điều khiển, và cài được trên Python đang chạy ----
+
+
+async def _server_conn_of(kind: str, h, ids, raw_client):
+    if kind == "pairing":
+        return await raw_pairing(raw_client, h, ids)
+    if kind == "control":
+        return await raw_control(raw_client, h, ids)
+    peer = await raw_opening(raw_client, h, ids.b, wire_hello(ids.b), DATA_OPEN)
+    return peer, await h.next()
+
+
+def _hook_installed(writer) -> bool:
+    """Hook đọc bỏ được bọc **trên instance** SSLProtocol (đặc tả mục 1), không sửa lớp."""
+    return "_do_shutdown" in vars(writer.transport._ssl_protocol)
+
+
+def _spy_discard(monkeypatch) -> list:
+    calls: list = []
+    real = connection._discard_after_close_notify
+
+    def spy(writer, **kwargs):
+        calls.append(writer)
+        return real(writer, **kwargs)
+
+    monkeypatch.setattr(connection, "_discard_after_close_notify", spy)
+    return calls
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(("kind", "hooked"), [("pairing", True), ("control", True), ("data", False)])
+async def test_close_installs_discard_hook_only_for_pairing_and_control(
+    fast, monkeypatch, listener_factory, raw_client, ids, kind, hooked
+):
+    """(c) `Connection.close` gọi `_discard_after_close_notify` với kết nối ghép đôi / điều khiển;
+    kết nối dữ liệu giữ hành vi cũ (không đọc bỏ: bên nhận đóng giữa chừng thì RST là đúng ý)."""
+    calls = _spy_discard(monkeypatch)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await _server_conn_of(kind, h, ids, raw_client)
+    assert server.kind is ConnectionKind(kind)
+    writer = server._writer
+    task = asyncio.create_task(server.close())
+    await peer.expect_closed(3.0)
+    await peer.close_gracefully()
+    await asyncio.wait_for(task, 3.0)
+    assert server.closed
+    if hooked:
+        assert calls == [writer]
+        assert _hook_installed(writer)
+    else:
+        assert calls == []
+        assert not _hook_installed(writer)
+
+
+@pytest.mark.integration
+async def test_client_side_control_close_installs_discard_hook(fast, monkeypatch, listener_factory, ids):
+    """(c) Phía client (`open_control`) cũng được bọc: ai đóng trước cũng có thể gặp máy kia còn gửi."""
+    calls = _spy_discard(monkeypatch)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    conn = await b_control(h, ids)
+    server = await h.next()
+    writer = conn._writer
+    await asyncio.gather(conn.close(), server.close())
+    assert writer in calls
+    assert _hook_installed(writer)
+
+
+@pytest.mark.integration
+async def test_canary_discard_hook_installs_on_running_python(fast, listener_factory, raw_client, ids):
+    """(e) Canary: trên Python đang chạy, sslproto vẫn có đủ thuộc tính nội bộ hook cần và hook cài được.
+
+    Nâng Python mà asyncio đổi sslproto thì hook lặng lẽ thành không làm gì (fallback): test này đỏ để
+    CI báo ngay, thay vì lỗi mất phần đuôi chỉ lộ ra khi chạy thật.
+    """
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await raw_control(raw_client, h, ids)
+    writer = server._writer
+    proto = writer.transport._ssl_protocol
+    for name in ("_do_shutdown", "_control_ssl_reading"):
+        assert callable(getattr(proto, name, None)), f"sslproto không còn {name}"
+    for name in ("_sslobj", "_eof_received", "_ssl_reading_paused"):
+        assert hasattr(proto, name), f"sslproto không còn {name}"
+    assert callable(getattr(proto._sslobj, "read", None))
+    assert not _hook_installed(writer)
+    connection._discard_after_close_notify(writer)
+    assert _hook_installed(writer), f"hook không cài được trên Python {sys.version.split()[0]}"
+    task = asyncio.create_task(server.close())
+    await peer.expect_closed(3.0)
+    await peer.close_gracefully()
+    await asyncio.wait_for(task, 3.0)
+
+
+# --- (d): gọi lặp không bọc chồng; thiếu thuộc tính nội bộ thì giữ hành vi cũ, không raise ----------
+
+
+class _FakeSSLObj:
+    """`SSLObject` giả: `read` trả lần lượt các phần tử của `script` (ngoại lệ thì ném), hết thì WantRead."""
+
+    def __init__(self, *script) -> None:
+        self.script = list(script)
+        self.reads = 0
+
+    def read(self, n: int = 1024, buffer=None):
+        self.reads += 1
+        item = self.script.pop(0) if self.script else ssl.SSLWantReadError("hết dữ liệu")
+        if isinstance(item, BaseException):
+            raise item
+        return item
+
+
+class _FakeProto:
+    """SSLProtocol giả: chỉ có các thuộc tính hook dùng; ghi lại thứ tự gọi."""
+
+    def __init__(self, sslobj=None, *, eof_received: bool = False) -> None:
+        self._sslobj = sslobj
+        self._eof_received = eof_received
+        self.events: list[str] = []
+
+    def _do_shutdown(self) -> None:
+        self.events.append("shutdown")
+
+    def _control_ssl_reading(self) -> None:
+        self.events.append("control")
+
+
+def _writer_of(proto) -> SimpleNamespace:
+    return SimpleNamespace(transport=SimpleNamespace(_ssl_protocol=proto))
+
+
+def test_discard_hook_reads_until_want_read_then_calls_original():
+    sslobj = _FakeSSLObj(b"p" * 100, b"q" * 100)
+    proto = _FakeProto(sslobj)
+    connection._discard_after_close_notify(_writer_of(proto))
+    proto._do_shutdown()
+    assert sslobj.reads == 3  # hai lần có dữ liệu, lần thứ ba WantRead
+    assert proto.events.count("shutdown") == 1
+    assert "control" in proto.events, "phải gỡ tạm dừng đọc socket sau khi đọc bỏ (Sửa 1)"
+
+
+def test_discard_hook_stops_at_peer_close_notify_and_calls_original():
+    sslobj = _FakeSSLObj(b"p" * 100, ssl.SSLZeroReturnError("close_notify"), b"never")
+    proto = _FakeProto(sslobj)
+    connection._discard_after_close_notify(_writer_of(proto))
+    proto._do_shutdown()
+    assert sslobj.reads == 2
+    assert proto.events.count("shutdown") == 1
+
+
+def test_discard_hook_leaves_other_ssl_errors_to_original():
+    """Sửa 2: SSLError khác không bị nuốt thành 'đóng gọn': ngừng đọc, không raise, giao cho bản gốc."""
+    sslobj = _FakeSSLObj(ssl.SSLError(1, "giả lập lỗi khác"), b"never")
+    proto = _FakeProto(sslobj)
+    connection._discard_after_close_notify(_writer_of(proto))
+    proto._do_shutdown()
+    assert sslobj.reads == 1
+    assert proto.events.count("shutdown") == 1
+
+
+@pytest.mark.parametrize("case", ["eof_received", "no_sslobj"])
+def test_discard_hook_does_not_read_when_nothing_to_read(case):
+    sslobj = _FakeSSLObj(b"never")
+    proto = _FakeProto(sslobj, eof_received=True) if case == "eof_received" else _FakeProto(None)
+    connection._discard_after_close_notify(_writer_of(proto))
+    proto._do_shutdown()
+    assert sslobj.reads == 0
+    assert proto.events.count("shutdown") == 1
+
+
+def test_discard_hook_installed_repeatedly_does_not_stack():
+    sslobj = _FakeSSLObj(b"p" * 100)
+    proto = _FakeProto(sslobj)
+    writer = _writer_of(proto)
+    connection._discard_after_close_notify(writer)
+    first = proto._do_shutdown
+    connection._discard_after_close_notify(writer)
+    connection._discard_after_close_notify(writer)
+    assert proto._do_shutdown is first
+    proto._do_shutdown()
+    assert sslobj.reads == 2  # đúng một vòng đọc bỏ
+    assert proto.events.count("shutdown") == 1
+
+
+class _BareProto:
+    """SSLProtocol 'đời Python khác': chỉ có `_do_shutdown`, không có thuộc tính nội bộ nào khác."""
+
+    def __init__(self) -> None:
+        self.shutdowns = 0
+
+    def _do_shutdown(self) -> None:
+        self.shutdowns += 1
+
+
+def test_discard_hook_without_internal_attributes_keeps_old_behaviour():
+    proto = _BareProto()
+    connection._discard_after_close_notify(_writer_of(proto))
+    proto._do_shutdown()
+    assert proto.shutdowns == 1
+
+
+@pytest.mark.parametrize(
+    "writer",
+    [
+        SimpleNamespace(transport=None),
+        SimpleNamespace(transport=SimpleNamespace()),  # không phải transport TLS (không _ssl_protocol)
+        SimpleNamespace(transport=SimpleNamespace(_ssl_protocol=None)),
+        SimpleNamespace(transport=SimpleNamespace(_ssl_protocol=SimpleNamespace())),  # không _do_shutdown
+    ],
+    ids=["transport-none", "no-ssl-protocol", "ssl-protocol-none", "no-do-shutdown"],
+)
+def test_discard_hook_missing_internals_does_not_raise(writer):
+    connection._discard_after_close_notify(writer)
+
+
+@pytest.mark.integration
+async def test_discard_hook_repeated_on_live_connection_then_close_still_clean(
+    fast, listener_factory, raw_client, ids
+):
+    """(d) Trên kết nối thật: cài trước hai lần rồi close() (cài lần ba) → không bọc chồng, vẫn đóng gọn."""
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await raw_control(raw_client, h, ids)
+    writer = server._writer
+    proto = writer.transport._ssl_protocol
+    connection._discard_after_close_notify(writer)
+    first = vars(proto)["_do_shutdown"]
+    connection._discard_after_close_notify(writer)
+    assert vars(proto)["_do_shutdown"] is first
+    await server.send(_CN_TAIL)
+    task = asyncio.create_task(server.close())
+    _, data = await peer.expect_closed(3.0)
+    await peer.close_gracefully()
+    await asyncio.wait_for(task, 3.0)
+    assert vars(proto)["_do_shutdown"] is first
+    assert [parse_message(f) for f in frames_in(data)] == [_CN_TAIL]
+
+
+async def _peer_sent_then_closed(raw_client, h, ids, pings: list[int]):
+    """Máy kia gửi các `ping` rồi đóng gọn; trả `server` khi transport phía này đã đóng hẳn.
+
+    Phía này không đọc gì: các message nằm trong bộ đệm đọc, tầng TLS đã trả close_notify.
+    """
+    peer, server = await raw_control(raw_client, h, ids)
+    for t in pings:
+        peer.send_dict({"type": "ping", "t": t})
+    await peer.drain()
+    await peer.close_gracefully()
+    await asyncio.wait_for(server._writer.wait_closed(), 3.0)
+    return server
+
+
+@pytest.mark.integration
+async def test_send_after_peer_closed_cleanly_only_closes_send_side(fast, listener_factory, raw_client, ids):
+    """Máy kia gửi message rồi đóng gọn; `send` phía này lỗi → chỉ khóa chiều gửi.
+
+    `closed` vẫn False, `receive` trả nốt các message đã đệm rồi None, `send` sau → ConnectionLostError
+    ngay; `close()` vẫn chạy.
+    """
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    server = await _peer_sent_then_closed(raw_client, h, ids, [1, 2])
+    with pytest.raises(ConnectionLostError):
+        await server.send(Ping(t=9))
+    assert not server.closed
+    assert await asyncio.wait_for(server.receive(), 2) == Ping(t=1)
+    assert await asyncio.wait_for(server.receive(), 2) == Ping(t=2)
+    assert await asyncio.wait_for(server.receive(), 2) is None
+    with pytest.raises(ConnectionLostError):
+        await server.send(Ping(t=10))
+    await asyncio.wait_for(server.close(), 3.0)
+    assert server.closed
+
+
+@pytest.mark.integration
+async def test_control_channel_pong_failure_after_peer_closed_still_delivers_buffer(
+    fast, monkeypatch, listener_factory, raw_client, ids
+):
+    """`pong` / `ping` gửi hỏng vì máy kia đã đóng gọn không kết thúc `run`: mọi message đã đệm tới
+    `on_message`.
+
+    Bộ đệm đã có EOF nên `receive` không bao giờ nhường loop; mỗi `receive` được cho ngủ 10 ms (bên
+    nhận chậm) để task pong/keepalive kịp gửi hỏng giữa chừng.
+    """
+    real_receive = connection.Connection.receive
+
+    async def slow_receive(self):
+        await asyncio.sleep(0.01)
+        return await real_receive(self)
+
+    monkeypatch.setattr(connection.Connection, "receive", slow_receive)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    server = await _peer_sent_then_closed(raw_client, h, ids, list(range(1, 51)))
+    got: list = []
+    reason = await asyncio.wait_for(
+        ControlChannel(server, ping_interval=PI, dead_after=DA).run(got.append), 5
+    )
+    assert reason is CloseReason.PEER_CLOSED
+    assert got == [Ping(t=t) for t in range(1, 51)]
+    assert server.closed
+
+
+@pytest.mark.integration
+async def test_control_channel_ping_failure_after_peer_closed_still_delivers_buffer(
+    fast, monkeypatch, listener_factory, raw_client, ids
+):
+    """Nhánh `_keepalive_loop` → `_after_send_lost`: máy kia không ping (chỉ gửi `pong`) rồi đóng gọn;
+    `ping` của keepalive gửi hỏng không kết thúc `run`: đủ message rồi `PEER_CLOSED`.
+
+    `ping_interval` rất nhỏ nên `ping` đầu tiên được gửi (và hỏng) trước khi vòng đọc đọc xong; mỗi
+    `receive` ngủ 20 ms để vòng đọc chắc chắn còn dở lúc đó.
+    """
+    real_receive = connection.Connection.receive
+
+    async def slow_receive(self):
+        await asyncio.sleep(0.02)
+        return await real_receive(self)
+
+    monkeypatch.setattr(connection.Connection, "receive", slow_receive)
+    h = await listener_factory(ids.server, trusted=[ids.b])
+    peer, server = await raw_control(raw_client, h, ids)
+    for t in range(1, 21):
+        peer.send_dict({"type": "pong", "t": t})
+    await peer.drain()
+    await peer.close_gracefully()
+    await asyncio.wait_for(server._writer.wait_closed(), 3.0)
+    got: list = []
+    reason = await asyncio.wait_for(
+        ControlChannel(server, ping_interval=0.005, dead_after=5.0).run(got.append), 5
+    )
+    assert reason is CloseReason.PEER_CLOSED
+    assert got == [Pong(t=t) for t in range(1, 21)]
+
+
+def _sync_open_pairing(port: int, anon) -> ssl.SSLSocket:
+    sock = sync_connect(port, tls.client_context())
+    try:
+        hello = sync_read_frame(sock)
+        assert hello is not None and hello["type"] == "hello"
+        sock.sendall(encode_message(wire_hello(anon, "Anon")) + encode_message(to_dict(pair_request(anon))))
+    except BaseException:
+        sock.close()
+        raise
+    return sock
+
+
+@pytest.mark.integration
+async def test_pairing_close_aborts_quickly_when_peer_floods_past_discard_limit(
+    fast, monkeypatch, listener_factory, ids
+):
+    """Máy ẩn danh (ghép đôi) gửi lũ sau close_notify của ta, không bao giờ trả close_notify: đọc bỏ
+    dừng ở `_DISCARD_LIMIT_PAIRING` rồi kết nối bị cắt ngay, không đọc bỏ (tốn CPU) tới hết CLOSE_TIMEOUT.
+    """
+    monkeypatch.setattr(connection, "CLOSE_TIMEOUT", 5.0)
+    monkeypatch.setattr(connection, "DRAIN_TIMEOUT", 10.0)
+    h = await listener_factory(ids.server)
+    sock = await asyncio.to_thread(_sync_open_pairing, h.port, ids.anon)
+    stop = threading.Event()
+    flooder = asyncio.create_task(asyncio.to_thread(_flood_until, sock, stop))
+    try:
+        server = await h.next()
+        assert server.kind is ConnectionKind.PAIRING
+        await asyncio.sleep(0.1)
+        assert not flooder.done(), "phép thử vô nghĩa: máy kia không còn gửi"
+        start = time.monotonic()
+        await asyncio.wait_for(server.close(), 10.0)
+        elapsed = time.monotonic() - start
+        assert server.closed
+        assert elapsed < 1.0, f"close() mất {elapsed:.2f} s: đọc bỏ không có trần"
+    finally:
+        stop.set()
+        await asyncio.wait_for(flooder, 10.0)
+        sock.close()
+
+
+def test_discard_hook_stops_at_limit_and_leaves_rest_to_original():
+    """Đọc bỏ vượt `limit` thì thôi đọc (kể cả ở các lần gọi sau) và không gỡ tạm dừng đọc socket."""
+    sslobj = _FakeSSLObj(*([b"x" * 1000] * 10))
+    proto = _FakeProto(sslobj)
+    connection._discard_after_close_notify(_writer_of(proto), limit=2500)
+    proto._do_shutdown()
+    assert sslobj.reads == 3  # 3000 byte > 2500: dừng
+    assert proto.events == ["shutdown"]
+    proto._do_shutdown()
+    assert sslobj.reads == 3
+    assert proto.events == ["shutdown", "shutdown"]
+
+
+def test_discard_limits_by_kind():
+    assert connection._DISCARD_LIMIT_PAIRING == 64 * 1024
+    limit = connection._DISCARD_LIMIT_CONTROL
+    assert limit == 2 * (connection.MAX_MESSAGE_SIZE + HEADER.size)
