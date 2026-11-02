@@ -184,6 +184,7 @@ from shiboken6 import isValid
 from teleport import paths
 from teleport.net.connection import DEFAULT_PORT
 from teleport.ui import first_run, shortcuts, texts, theme
+from teleport.ui.backdrop import MicaBackdrop
 from teleport.ui.conversations import ConversationList
 from teleport.ui.discover import DiscoverPage
 from teleport.ui.first_run import FirstRunChoice, TextSource
@@ -662,6 +663,7 @@ class MainWindow(QMainWindow):
         self.add_page(Page.DISCOVER, self.discover)  # cũng dời “Mở thư mục” về cuối chuỗi Tab
         self._update_page_buttons()
         self.retranslate()
+        self.backdrop = MicaBackdrop(self, self.sidebar)  # nền Mica cột trái (Windows 11, spec G7)
 
     # ---- Trạng thái --------------------------------------------------------------------------
 

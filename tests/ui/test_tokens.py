@@ -1200,3 +1200,182 @@ def test_primary_button_paints_accent_background(themed, qtbot, dark, accent):
     qtbot.waitExposed(button)
     image = button.grab().toImage()
     assert _has_pixel_near(image, tok.accent, 2), f"nút chính không có nền {_hex(tok.accent)}"
+
+
+# =================================================================================================
+# G7 — nền Mica của cột trái (spec-g7 mục 2.2, T-12, T-13; mục 9 ý 2–4 thắng)
+# =================================================================================================
+
+# Hằng của spec (mục 2.2): không đọc từ `theme` để test không tự xác nhận lại code.
+MICA_TINT_ALPHA = 178  # ≈ 0,70
+MICA_RANGE = {False: (0xE0, 0xFF), True: (0x10, 0x40)}  # dải xám giả định của Mica (sáng, tối)
+BACKDROP_PROPERTY = "backdrop"
+
+
+def _mica_blend(sidebar: QColor, gray: int) -> QColor:
+    """Nền trộn 8-bit `round(a·sidebar + (1−a)·g)`, a = 178/255 (T-12)."""
+    a = MICA_TINT_ALPHA / 255
+
+    def mix(c: int) -> int:
+        return round(a * c + (1 - a) * gray)
+
+    return QColor(mix(sidebar.red()), mix(sidebar.green()), mix(sidebar.blue()))
+
+
+def _mica_backgrounds(tok, dark: bool) -> list[tuple[int, QColor]]:
+    lo, hi = MICA_RANGE[dark]
+    return [(g, _mica_blend(tok.sidebar, g)) for g in range(lo, hi + 1)]
+
+
+def _sidebar_pairs(*tables: dict[str, tuple[str, ...]]) -> list[str]:
+    """Màu (tên token) có nền tên đúng `"sidebar"` trong các bảng (mục 9 ý 2: `selected`, `hover` giữ)."""
+    return sorted({fg for table in tables for fg, bgs in table.items() if "sidebar" in bgs})
+
+
+T12_TEXT_FG = _sidebar_pairs(TEXT_PAIRS, A3_TEXT_PAIRS, B2_TEXT_PAIRS)
+T12_NON_TEXT_FG = _sidebar_pairs(NON_TEXT_PAIRS, A3_NON_TEXT_PAIRS, B2_NON_TEXT_PAIRS)
+
+
+def test_t12_pair_tables_still_have_sidebar_backgrounds():
+    """Đối chứng: bảng cặp có nền `sidebar` (bảng bị sửa bớt thì T-12 không còn kiểm gì)."""
+    assert {"text", "text_muted", "accent_text", "success", "warning"} <= set(T12_TEXT_FG)
+    assert {"border_strong", "accent_strong", "success", "warning", "danger", "offline"} <= set(
+        T12_NON_TEXT_FG
+    )
+
+
+def test_t12_mica_constants_match_spec():
+    from teleport.ui import theme
+
+    assert theme.BACKDROP_PROPERTY == BACKDROP_PROPERTY
+    assert theme.MICA_TINT_ALPHA == MICA_TINT_ALPHA
+    assert {k: tuple(v) for k, v in theme.MICA_RANGE.items()} == MICA_RANGE
+
+
+@MODES
+@ACCENTS
+def test_t12_mica_tint_is_sidebar_with_tint_alpha(dark, accent):
+    """Mục 9 ý 4: `mica_tint(dark)` (không tham số accent; `sidebar` là token trung tính)."""
+    from teleport.ui import theme
+
+    tint = theme.mica_tint(dark)
+    sidebar = theme.tokens(dark, accent).sidebar
+    assert isinstance(tint, QColor)
+    assert (tint.red(), tint.green(), tint.blue()) == (sidebar.red(), sidebar.green(), sidebar.blue())
+    assert tint.alpha() == MICA_TINT_ALPHA
+
+
+@MODES
+@ACCENTS
+@pytest.mark.parametrize("fg_name", T12_TEXT_FG)
+def test_t12_text_reaches_4_5_on_mica_blended_sidebar(dark, accent, fg_name):
+    from teleport.ui import theme
+
+    tok = theme.tokens(dark, accent)
+    fg = getattr(tok, fg_name)
+    low = [
+        f"g={g:#04x} nền {_hex(bg)}: {wcag_ratio(fg, bg):.3f}"
+        for g, bg in _mica_backgrounds(tok, dark)
+        if wcag_ratio(fg, bg) < TEXT_MIN
+    ]
+    assert not low, f"chữ {fg_name} {_hex(fg)} < {TEXT_MIN}:1 trên sidebar trộn Mica: {low[:5]}"
+
+
+@MODES
+@ACCENTS
+@pytest.mark.parametrize("fg_name", T12_NON_TEXT_FG)
+def test_t12_non_text_reaches_3_on_mica_blended_sidebar(dark, accent, fg_name):
+    from teleport.ui import theme
+
+    tok = theme.tokens(dark, accent)
+    fg = getattr(tok, fg_name)
+    low = [
+        f"g={g:#04x} nền {_hex(bg)}: {wcag_ratio(fg, bg):.3f}"
+        for g, bg in _mica_backgrounds(tok, dark)
+        if wcag_ratio(fg, bg) < NON_TEXT_MIN
+    ]
+    assert not low, f"viền/icon {fg_name} {_hex(fg)} < {NON_TEXT_MIN}:1 trên sidebar trộn Mica: {low[:5]}"
+
+
+@MODES
+@ACCENTS
+def test_t12_focus_ring_reaches_3_on_mica_blended_sidebar(dark, accent):
+    """Mục 9 ý 2: vòng tiêu điểm hàng chat chỉ trộn với `bg_name="sidebar"`."""
+    from teleport.ui import theme
+
+    tok = theme.tokens(dark, accent)
+    ring = theme.focus_ring_color(dark)
+    low = [
+        f"g={g:#04x} nền {_hex(bg)}: {wcag_ratio(ring, bg):.3f}"
+        for g, bg in _mica_backgrounds(tok, dark)
+        if wcag_ratio(ring, bg) < NON_TEXT_MIN
+    ]
+    assert not low, f"vòng tiêu điểm {_hex(ring)} < {NON_TEXT_MIN}:1 trên sidebar trộn Mica: {low[:5]}"
+
+
+_RGBA = re.compile(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\s*\)", re.IGNORECASE)
+
+
+def css_rgba(value: str) -> QColor:
+    """Đọc `rgba(r, g, b, a)` (mục 9 ý 3: bộ đọc riêng). `a` nguyên 0–255; có dấu chấm thì là 0–1."""
+    m = _RGBA.search(value)
+    assert m, f"giá trị CSS không có rgba(...): {value!r}"
+    r, g, b = (int(m.group(i)) for i in (1, 2, 3))
+    raw = m.group(4)
+    alpha = round(float(raw) * 255) if "." in raw else int(raw)
+    return QColor(r, g, b, alpha)
+
+
+def test_css_rgba_reader_parses_int_and_fraction_alpha():
+    assert css_rgba("rgba(1, 2, 3, 178)").getRgb() == (1, 2, 3, 178)
+    assert css_rgba("RGBA(10,20,30,0.698)").getRgb() == (10, 20, 30, 178)
+    with pytest.raises(AssertionError):
+        css_rgba("#aabbcc")
+
+
+@MODES
+@ACCENTS
+def test_t13_stylesheet_has_exactly_one_mica_rule_with_tint(dark, accent):
+    from teleport.ui import theme
+
+    css = theme.stylesheet(dark, accent=accent)
+    mica_selectors = [
+        s
+        for selectors, _ in parse_rules(css)
+        for s in selectors
+        if f"[{BACKDROP_PROPERTY}=mica]" in _norm_selector(s)
+    ]
+    want = f'QFrame[{theme.SURFACE_PROPERTY}="sidebar"][{BACKDROP_PROPERTY}="mica"]'
+    assert [_norm_selector(s) for s in mica_selectors] == [_norm_selector(want)], mica_selectors
+    decls = find_rule(css, want)
+    value = decls.get("background-color", decls.get("background"))
+    assert value is not None, f"luật Mica không đặt nền: {decls}"
+    tint = css_rgba(value)
+    expected = theme.mica_tint(dark)
+    assert tint.getRgb() == expected.getRgb(), f"{tint.getRgb()} ≠ mica_tint {expected.getRgb()}"
+    assert tint.alpha() == MICA_TINT_ALPHA
+
+
+@MODES
+def test_t13_mica_sidebar_frame_still_paints_right_border(themed, qtbot, dark):
+    """Mục 9 ý 3: viền phải đến từ luật gốc `QFrame[surface="sidebar"]`, kiểm bằng pixel như T-5."""
+    from PySide6.QtWidgets import QFrame
+
+    from teleport.ui import theme
+
+    tok = themed(dark)
+    frame = QFrame()
+    frame.setProperty(theme.SURFACE_PROPERTY, "sidebar")
+    frame.setProperty(BACKDROP_PROPERTY, "mica")
+    qtbot.addWidget(frame)
+    frame.resize(120, 80)
+    frame.show()
+    qtbot.waitExposed(frame)
+    image = frame.grab().toImage()
+    dpr = image.devicePixelRatio()
+    x = round((frame.width() - 1) * dpr)
+    for y in (4, 40, 76):
+        px = image.pixelColor(x, round(y * dpr))
+        assert px.alpha() >= 253 and _close(px, tok.border, 2), (
+            f"mép phải y={y}: {_hex(px)} alpha {px.alpha()} ≠ border {_hex(tok.border)}"
+        )

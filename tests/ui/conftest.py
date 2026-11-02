@@ -34,6 +34,9 @@ Fixture chính:
   (xóa cache GNOME, tắt chế độ tức thì). Không chạm `animations_enabled()`: test cần “hệ điều hành
   tắt hiệu ứng” xin `real_motion` rồi vá lại hàm đó (như fixture `waves` của `test_discover.py`, nay
   sóng radar là một `motion.Loop`, spec G6).
+- `backdrop_reset` (tự dùng): vá mặc định `ui/backdrop.py` `_high_contrast` → True và ba seam DWM →
+  `E_FAIL` (nền đặc, không gọi DWM thật), sau mỗi test gọi `_reset_for_tests()` (gỡ bộ lọc native,
+  xóa tập backdrop đang theo dõi; spec G7). Test giả Windows 11 bằng cách vá đè seam của module.
 - `real_motion`: test xin khi cần hoạt ảnh chạy thật: tắt chế độ tức thì và vá
   `motion.animations_enabled` thành `lambda: True`. Chỉ kiểm giá trị cuối, không giá trị giữa chừng.
 """
@@ -362,6 +365,29 @@ def motion_instant(qapp):
     yield
     stop_all()
     reset()
+
+
+@pytest.fixture(autouse=True)
+def backdrop_reset(qapp, monkeypatch):
+    """Mọi test ui: không gọi DWM thật và bộ theo dõi cài đặt của `ui/backdrop.py` không rò sang test
+    sau (spec G7 mục 9 ý 10).
+
+    Mặc định vá `_high_contrast` thành True (nền đặc, không gọi DWM) và ba seam DWM thành `E_FAIL`, nên
+    cả khi chạy với `QT_QPA_PLATFORM=windows` (ảnh duyệt) cửa sổ vẫn nền đặc như ảnh của người dùng
+    trước G7; test cần Mica tự vá đè. Teardown: `backdrop._reset_for_tests()` (gỡ bộ lọc native khỏi
+    `qapp`, xóa tập backdrop đang theo dõi). Module chưa có seam hay import lỗi thì bỏ qua: test của
+    chính nó tự đỏ.
+    """
+    try:
+        from teleport.ui import backdrop
+    except Exception:
+        yield
+        return
+    monkeypatch.setattr(backdrop, "_high_contrast", lambda: True)
+    for name in ("_dwm_extend_frame", "_dwm_set_backdrop", "_dwm_set_dark"):
+        monkeypatch.setattr(backdrop, name, lambda *_args: backdrop.E_FAIL)
+    yield
+    backdrop._reset_for_tests()
 
 
 @pytest.fixture

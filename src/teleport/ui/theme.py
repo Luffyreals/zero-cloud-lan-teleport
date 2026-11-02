@@ -91,6 +91,11 @@ font của hệ điều hành. Không tải font hay ảnh nào từ mạng.
   `text_muted`, `accent` → `accent_text`).
 - `QFrame[surface="sidebar|raised|card"]`: nền `sidebar` (viền phải `border`, không bo) / nền
   `surface_raised`, viền `border`, bo `RADIUS_CARD` / như `raised` nhưng bo `RADIUS_BLOCK`.
+- `QFrame[surface="sidebar"][backdrop="mica"]` — **cột trái trên nền Mica** (spec G7, `ui/backdrop.py`
+  đặt `BACKDROP_PROPERTY` khi DWM đã bật Mica): nền `mica_tint(dark)` = `sidebar` với alpha
+  `MICA_TINT_ALPHA`, viền phải lấy từ luật gốc. Tương phản của các cặp trên nền `sidebar` được kiểm
+  trên nền trộn `a·sidebar + (1 − a)·g` (`a = MICA_TINT_ALPHA / 255`) với mọi mức xám `g` trong dải Mica
+  giả định `MICA_RANGE[dark]` (`tests/ui/test_tokens.py`).
 - `QFrame[segmented="true"]` và `QRadioButton[segment="first|middle|last"]` — **nhóm chọn một**
   (`widgets.SegmentedControl`, spec D6): khung nền `surface_raised`, viền 1 px `border_strong`, bo
   `RADIUS_CONTROL`; nút nền trong suốt, viền 2 px trong suốt, chữ `text`, ô tròn radio rộng 0;
@@ -131,6 +136,9 @@ RADIUS_CONTROL, RADIUS_CARD, RADIUS_BLOCK, RADIUS_BUBBLE, RADIUS_BUBBLE_TAIL = 6
 ACCENT_FAMILY = "Bricolage Grotesque"
 _CONNECTED_PROPERTY = "teleport_theme_connected"  # đã nối `colorSchemeChanged`
 _STYLE_PROPERTY = "teleport_theme_fusion"  # đã đặt style Fusion
+BACKDROP_PROPERTY = "backdrop"  # QFrame[surface="sidebar"][backdrop="mica"] (ui/backdrop.py)
+MICA_TINT_ALPHA = 178  # ≈ 0,70: alpha lớp màu `sidebar` phủ trên Mica
+MICA_RANGE: dict[bool, tuple[int, int]] = {False: (0xE0, 0xFF), True: (0x10, 0x40)}  # mức xám Mica giả định
 
 _Role = QPalette.ColorRole
 _Group = QPalette.ColorGroup
@@ -380,6 +388,13 @@ def tokens_for(widget: QWidget) -> Tokens:
     return tokens(is_dark_palette(QApplication.palette()))
 
 
+def mica_tint(dark: bool) -> QColor:
+    """Màu nền cột trái khi nằm trên Mica: `sidebar` (token trung tính) với alpha `MICA_TINT_ALPHA`."""
+    color = QColor(tokens(dark).sidebar)
+    color.setAlpha(MICA_TINT_ALPHA)
+    return color
+
+
 def palette(dark: bool, accent: str | None = None) -> QPalette:
     """Bảng màu sáng hay tối của Teleport với màu nhấn `accent` (như `tokens`), sinh từ token (ánh xạ
     ở docstring module)."""
@@ -515,6 +530,11 @@ def stylesheet(dark: bool, button_height: int | None = None, accent: str | None 
         f'{surface}"card"] {{ background-color: {t.surface_raised.name()};'
         f" border: 1px solid {border}; border-radius: {RADIUS_BLOCK}px; }}",
     ]
+    tint = mica_tint(dark)
+    lines.append(
+        f'{surface}"sidebar"][{BACKDROP_PROPERTY}="mica"] {{ background-color:'
+        f" rgba({tint.red()}, {tint.green()}, {tint.blue()}, {tint.alpha()}); }}"
+    )
 
     def segment(state: str = "") -> str:
         return ", ".join(f'QRadioButton[{SEGMENT_PROPERTY}="{p}"]{state}' for p in _SEGMENT_POSITIONS)
