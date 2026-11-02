@@ -669,6 +669,7 @@ def test_export_logs_real_zip_has_info_txt(
     assert "Đã lưu log vào" in seen["notice"]
 
 
+@pytest.mark.slow
 def test_selftest_builds_settings_page(tmp_path):
     env = dict(os.environ)
     env["QT_QPA_PLATFORM"] = "offscreen"
@@ -690,7 +691,8 @@ def test_selftest_builds_settings_page(tmp_path):
     p = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env, timeout=60)
     out = p.stdout.decode("utf-8", "replace")
     assert p.returncode == 0, p.stderr.decode("utf-8", "replace")
-    assert "SETTINGS_PAGES 1" in out or "SETTINGS_PAGES 2" in out, out
+    # _selftest dựng đúng một SettingsPage; so cả dòng để "10" không khớp nhầm.
+    assert "SETTINGS_PAGES 1" in out.splitlines(), out
     assert b"Traceback" not in p.stderr
 
 
