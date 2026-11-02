@@ -2359,6 +2359,84 @@
     </message>
 </context>
 <context>
+    <name>WaitPairing</name>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Chép</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Chép địa chỉ {address}</source>
+        <translation>Copy address {address}</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Chưa mở được chế độ chờ ghép đôi. Hãy đóng màn này rồi thử lại.</source>
+        <translation>Couldn't start waiting for pairing. Close this screen and try again.</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Chờ ghép đôi</source>
+        <translation>Waiting to pair</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Không tìm thấy địa chỉ mạng nào của máy này. Hãy kiểm tra máy đã nối Wi-Fi hoặc dây mạng.</source>
+        <translation>Couldn't find any network address for this device. Check that it's connected to Wi-Fi or a network cable.</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Máy này đang ẩn nên máy kia không tự thấy. Hãy nhập IP của máy này ở máy kia.</source>
+        <translation>This device is hidden, so the other device won't see it automatically. Enter this device's IP address on the other device.</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Mã máy</source>
+        <translation>Device ID</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Thông tin của máy này</source>
+        <translation>About this device</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Tên</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Đang chờ máy khác gửi yêu cầu ghép đôi.</source>
+        <translation>Waiting for another device to send a pairing request.</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Đang lấy địa chỉ…</source>
+        <translation>Getting address…</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Đã chép địa chỉ {address}</source>
+        <translation>Copied address {address}</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Đóng</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Đóng màn này; máy đang ẩn thì thôi nhận yêu cầu ghép đôi.</source>
+        <translation>Closes this screen. If this device is hidden, it stops accepting pairing requests.</translation>
+    </message>
+    <message>
+        <location filename="../wait_pairing.py"/>
+        <source>Địa chỉ</source>
+        <translation>Address</translation>
+    </message>
+</context>
+<context>
     <name>Widgets</name>
     <message>
         <location filename="../widgets.py"/>

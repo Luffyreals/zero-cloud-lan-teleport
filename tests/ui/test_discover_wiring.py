@@ -9,7 +9,8 @@ Viết từ spec, không từ code:
   `settings_button`.
 - T-W (`GuiApp`): `pair_requested` → `PairingController.pair_device`, `manual_address_entered` →
   `pair_address`, `open_device_requested` → HOME + chọn cuộc trò chuyện của máy (spec B2 2.7),
-  `pairing.notice` → `info_bar` của trang; `wait_pairing_requested` không nối (D3). `radar_view` trong
+  `pairing.notice` → `info_bar` của trang; `wait_pairing_requested` (nút “Chờ ghép đôi”, hiện) mở trang
+  WAIT_PAIRING (spec D3 mục 2.2; phần còn lại ở tests/ui/test_wait_pairing.py). `radar_view` trong
   `settings.json` được đọc lúc `started` (H1: `Node.settings` là property) và ghi khi người dùng bấm
   `view_button` — chạy qua fixture `gui` (node thật trên 127.0.0.1 → `integration`).
 """
@@ -215,9 +216,18 @@ def test_pairing_notice_shows_on_discover_info_bar(gui_app):
     assert "Đã ghép đôi với May-B." in (page.info_bar.title, page.info_bar.text)
 
 
-def test_wait_pairing_signal_is_not_connected_yet(gui_app):
-    page = gui_app.window.discover
-    assert page.receivers(SIGNAL("wait_pairing_requested()")) == 0, "D3 mới nối nút “Chờ ghép đôi”"
+def test_wait_pairing_signal_opens_wait_pairing_page(gui_app, qtbot, tmp_path):
+    from teleport.ui.main_window import Page
+
+    window = gui_app.window
+    page = window.discover
+    assert page.receivers(SIGNAL("wait_pairing_requested()")) >= 1, "D3 nối nút “Chờ ghép đôi”"
+    window.show_running("May-A", tmp_path / "nhan")
+    assert window.open_page(Page.DISCOVER)
+    assert not page.wait_button.isHidden(), "nút “Chờ ghép đôi” hiện (set_wait_pairing_available(True))"
+    page.wait_pairing_requested.emit()
+    settle(qtbot)
+    assert window.current_page is Page.WAIT_PAIRING
 
 
 # =================================================================================================

@@ -109,6 +109,13 @@ hiện ở dải (`_receive_dir_notice`); `state_changed` mà thư mục nhận 
 hỏng, không đang đổi) và dải vẫn hiện đúng câu đó thì ẩn dải. Đang thoát thì không hiện dải, không
 bóng thoại, bỏ `failed`. Thoát và `shutdown` gọi `close_all` (đóng hộp chọn).
 
+**Chờ ghép đôi** (spec D3, mvp F3, mục 7.5): `_wire_wait_pairing` dựng `ui.wait_pairing.WaitPairingController`
+(`GuiApp.wait_pairing`; đăng ký trang WAIT_PAIRING, nối nút “Chờ ghép đôi” của trang “Tìm máy mới”);
+host mới → `attach`; địa chỉ đọc được ở `_on_addresses` cũng chuyển cho trang, mở trang thì đọc lại
+ngay (`refresh_addresses_requested` → `_refresh_addresses`); `visibility_changed` của Cài đặt → câu
+“đang ẩn”; `notice` của ghép đôi → thanh thông báo của trang khi trang mở. “Đang mở” và việc bật/tắt
+`accept_pairing` qua `NodeHost.set_wait_pairing_open`: docstring của `ui.wait_pairing`.
+
 **Ghép đôi** (`ui.pairing.PairingController`): ghép đôi máy mới và nhập IP chỉ ở trang “Tìm máy
 mới” (trên); `conversations.unpair_requested` (menu “Hủy ghép đôi…”, nút của dải thông báo) → hộp xác
 nhận hủy ghép đôi; `devices_changed` (đọc lại `devices()` sau ghép đôi / hủy ghép đôi) →
@@ -299,6 +306,7 @@ from teleport.ui.receive_dir import ChangeError, ReceiveDirController
 from teleport.ui.settings import SettingsController, SettingsPage, autostart_state_hint
 from teleport.ui.transfers import TransfersController
 from teleport.ui.tray import ClipNotice, ClipNoticeKind, SendTarget, Tray, TrayBadge, make_icon
+from teleport.ui.wait_pairing import WaitPairingController
 from teleport.ui.widgets import InfoLevel
 
 EXIT_OK = 0
@@ -673,12 +681,20 @@ class GuiApp(QObject):
         discover.open_device_requested.connect(self._on_open_device)
         discover.view_preference_changed.connect(self._on_view_preference)
         self.pairing.notice.connect(discover.show_notice)
+        self._wire_wait_pairing()
         if instance is not None:
             instance.show_requested.connect(self._on_show_requested)
 
     @property
     def quitting(self) -> bool:
         return self._quitting
+
+    def _wire_wait_pairing(self) -> None:
+        """Trang “Chờ ghép đôi” (spec D3; docstring module, “Chờ ghép đôi”)."""
+        self.wait_pairing = WaitPairingController(self.window, self, quitting=lambda: self._quitting)
+        self.settings.visibility_changed.connect(self.wait_pairing.set_visible)
+        self.pairing.notice.connect(self.wait_pairing.show_notice)
+        self.wait_pairing.refresh_addresses_requested.connect(self._refresh_addresses)
 
     def _device_model(self) -> DeviceListModel:
         """Model thiết bị dùng chung cho trang Cài đặt (một chỗ duy nhất; B2 đổi nguồn ở đây)."""
@@ -751,6 +767,7 @@ class GuiApp(QObject):
         self.transfers.attach(host)
         self.pairing.set_host(host)
         self.settings.attach(host)
+        self.wait_pairing.attach(host)
         self.window.set_machine_hidden(False)
         self._reset_pause()
         self.window.show_starting()
@@ -911,6 +928,7 @@ class GuiApp(QObject):
             return
         addresses, port = result
         self.window.set_addresses(addresses, port)
+        self.wait_pairing.set_addresses(addresses, port)
 
     # ---- Slot ----------------------------------------------------------------------------------
 
