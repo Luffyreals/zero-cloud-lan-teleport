@@ -137,6 +137,8 @@ Mỗi tính năng có các user story (US) và tiêu chí chấp nhận (AC). M�
     - giao diện, máy này đang *ẩn* (F10): chỉ trong lúc mở màn hình “Chờ ghép đôi” (nút “Chờ ghép đôi” ở màn Tìm máy mới, mục 7.1, 7.5); đóng màn hình thì thôi nhận;
     - CLI: chỉ trong lúc chạy `teleport listen`.
 
+    Màn hình “Chờ ghép đôi” **đang mở** khi nó là trang đang hiện của cửa sổ Teleport và cửa sổ đang hiện; thu nhỏ cửa sổ vẫn tính là mở. Đóng cửa sổ xuống khay hay chuyển sang trang khác là đóng; hiện lại cửa sổ khi màn hình đó vẫn là trang đang hiện thì mở lại. Không có hạn tự đóng.
+
     Mở màn hình “Chờ ghép đôi” hoặc chạy `teleport listen` gọi là **chế độ chờ ghép đôi**. Ngoài các trường hợp trên, máy gửi yêu cầu thấy “chưa sẵn sàng ghép đôi” (mục 8).
 
     Đóng màn hình “Chờ ghép đôi” hay chuyển sang ẩn không hủy phiên ghép đôi đã nhận (kể cả phiên chưa hiện mã); chỉ yêu cầu mới bị từ chối.
@@ -459,7 +461,7 @@ clipboard”; mật khẩu chép từ trình quản lý mật khẩu không đư
 │                                           │
 │  Tên:      Laptop-Minh                    │
 │  Mã máy:   a71c04d2                       │
-│  Địa chỉ:  192.168.1.20                   │
+│  Địa chỉ:  192.168.1.20         [ Chép ]  │
 │                                           │
 │  Máy này đang ẩn nên máy kia không tự     │
 │  thấy. Hãy nhập IP của máy này ở máy kia. │
@@ -468,7 +470,8 @@ clipboard”; mật khẩu chép từ trình quản lý mật khẩu không đư
 └───────────────────────────────────────────┘
 ```
 - Mở bằng nút “Chờ ghép đôi” ở màn Tìm máy mới (mục 7.1); máy này nhận yêu cầu ghép đôi thế nào khi màn hình mở hay đóng: F3.
-- “Địa chỉ”: mọi địa chỉ IPv4 của máy này, kèm `:cổng` khi cổng khác cổng mặc định (protocol mục 2), giống `teleport listen`.
+- “Đang chờ máy khác gửi yêu cầu ghép đôi.” chỉ hiện khi chế độ chờ ghép đôi đã mở được; không mở được thì hiện câu lỗi ở mục 8.
+- “Địa chỉ”: mọi địa chỉ IPv4 của máy này, kèm `:cổng` khi cổng khác cổng mặc định (protocol mục 2), giống `teleport listen`. Mỗi địa chỉ một hàng, có nút “Chép” chép đúng chuỗi đó. Chưa đọc xong: “Đang lấy địa chỉ…”; đọc xong mà không có địa chỉ nào: câu ở mục 8.
 - Hai dòng “Máy này đang ẩn…” chỉ hiện khi máy này đang ẩn (F10).
 - Có yêu cầu ghép đôi thì lời hỏi hiện theo mục 7.2.
 
@@ -618,6 +621,8 @@ Dung lượng hiển thị cho người dùng tính theo hệ nhị phân, như 
 | Giao diện: trạng thái của một máy ở danh sách cuộc trò chuyện | “Trực tuyến”, “Ngoại tuyến” hoặc lượt đang chạy (“Đang gửi · 62%”…), rồi hoạt động gần nhất. Lần kết nối gần nhất lỗi thì nhãn ngắn “Bị từ chối kết nối”, “Danh tính đã đổi”, “Khác phiên bản” hoặc “Không kết nối được”, kèm câu đầy đủ ở chú thích. Đang kéo file qua hàng: “Thả để gửi *n* file” | — |
 | Giao diện: đang ghép đôi (máy này gửi yêu cầu, máy kia chưa hiện mã) | Hộp “Ghép đôi” có thanh chờ và câu “Đang ghép đôi với “*PC-Nha*”…” (ghép bằng IP: “*192.168.1.5:47474*” thay cho tên) | Nút “Hủy” |
 | Giao diện: ghép đôi xong | “Đã ghép đôi với “*PC-Nha*”.” ở thanh thông báo của luồng chat, không mở hộp (cả hai máy); không có cửa sổ Teleport nào đang được dùng (cửa sổ ẩn, thu nhỏ hay bị cửa sổ khác che) thì thêm bóng thoại ở khay. Ghép đôi lỗi vẫn hiện hộp | Nút “Đóng” của dải thông báo |
+| Giao diện, màn “Chờ ghép đôi” (mục 7.5): không tìm thấy địa chỉ IPv4 nào của máy này | “Không tìm thấy địa chỉ mạng nào của máy này. Hãy kiểm tra máy đã nối Wi-Fi hoặc dây mạng.” (tự mất khi có lại địa chỉ) | Nối mạng |
+| Giao diện, màn “Chờ ghép đôi” (mục 7.5): không mở được chế độ chờ ghép đôi | “Chưa mở được chế độ chờ ghép đôi. Hãy đóng màn này rồi thử lại.” (không hiện “Đang chờ…”) | Đóng màn rồi mở lại |
 | Giao diện: bấm ghép đôi một thiết bị vừa rời mạng | “Không thấy “*PC-Nha*” trong mạng nữa. Hãy thử lại.” | — |
 | Giao diện: ghép đôi khi máy này đang có phiên ghép đôi khác | “Máy này đang có một phiên ghép đôi khác. Hãy thử lại sau.” | — |
 | Giao diện: đã xác nhận ghép đôi nhưng không lưu được | “Đã xác nhận ghép đôi với “*PC-Nha*” nhưng không lưu được danh sách thiết bị đã ghép đôi. Hãy kiểm tra quyền ghi thư mục cấu hình rồi ghép đôi lại.” | — |
