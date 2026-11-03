@@ -161,9 +161,10 @@ async def clip_net(node_factory, trust_each_other, monkeypatch):
 
 async def link(p, q) -> None:
     p.node.connect_hint(q.id, [LOCAL], q.node.port)
+    # 15 s: runner Windows của CI chạy -n auto có lúc mất quá 5 s mới xong bắt tay TLS hai chiều.
     await wait_until(
         lambda: q.id in p.node.connected_devices() and p.id in q.node.connected_devices(),
-        5,
+        15,
         f"{p.label} chưa nối được với {q.label}",
     )
 
