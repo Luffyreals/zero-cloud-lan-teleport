@@ -212,10 +212,10 @@ Ghi chú: `hashlib` và `ssl` của Python vốn đã chạy bằng C (OpenSSL),
 Repo Git: GitHub `Nha-Cong-Dong/zero-cloud-lan-teleport` (public, GPL-3.0-or-later). Mọi tài liệu, kể cả y_tuong, mvp và ke_hoach, nằm trong `docs/`.
 ```
 teleport/                      # ← gốc repo
-  README.md  LICENSE  pyproject.toml   # gốc repo chỉ có 3 file này (ngoài .gitignore)
+  README.md  LICENSE  pyproject.toml   # gốc repo chỉ có 3 file này (ngoài các file ẩn .gitignore, .gitattributes)
   .claude/CLAUDE.md            # hướng dẫn cho Claude Code
   .claude/agents/              # đội subagent (danh sách: .claude/CLAUDE.md)
-  .github/workflows/           # ci.yml; build-cli.yml, build-gui.yml (build thử bản CLI, bản GUI, chạy tay)
+  .github/workflows/           # ci.yml; build-cli.yml, build-gui.yml (build thử bản CLI, bản GUI và bộ cài Windows, chạy tay)
   docs/                        # mọi tài liệu .md: README (mục lục, thuật ngữ), y_tuong, mvp, ke_hoach,
                                #   architecture, protocol, CONTRIBUTING, SECURITY, CHANGELOG,
                                #   benchmark, hieu_du_an, (sau này) hướng dẫn người dùng
@@ -223,6 +223,7 @@ teleport/                      # ← gốc repo
   tests/                       # core/, trust/, net/, app/, … theo tầng
   packaging/pyinstaller/       # cấu hình build PyInstaller (cách build: docs/CONTRIBUTING.md)
   packaging/inno/              # script bộ cài Inno Setup cho Windows, bản dịch, giấy phép Inno (cách build: docs/CONTRIBUTING.md)
+  packaging/i18n/              # update.py: cập nhật bản dịch .ts/.qm của giao diện (luật: docs/CONTRIBUTING.md, Bản dịch)
   tools/                       # (tùy chọn) cpp-receiver/, java-client/
 ```
 Danh sách module và trạng thái từng module: [architecture.md](architecture.md) mục 3. Module chỉ được tạo khi có code thật.
@@ -243,7 +244,7 @@ Nguyên tắc: **làm bằng dòng lệnh (CLI) trước, giao diện sau.** Ph�
 | 1 | Khám phá & ghép đôi | 2 tuần | 3 | — | F2, F3 (lõi + CLI), F12 một phần | Thấy máy khác và ghép đôi qua CLI | ✅ Đã xong (N1 đạt khi đo trên máy ảo bridged, [benchmark.md](benchmark.md) mục 3.3; đo lại trên hai máy thật trong đợt đo, mục 5.4) |
 | 2 | Truyền file, backpressure, an toàn khi nhận | 3 tuần | 6 | `v0.1.0-alpha` | F4, F5 (CLI), F12 | Gửi file lớn qua CLI giữa 2 máy đã ghép đôi | ⏸ Code xong, chờ đợt đo (mục 5.4) |
 | 3 | Merkle & tự nối lại | 3 tuần | 9 | `v0.2.0-alpha` | F6, F7 | Rớt mạng vẫn tự nối lại, chỉ gửi phần còn thiếu. **Bản CLI đầu tiên đáng cho người dùng kỹ thuật dùng thử** | ⏳ Đang làm |
-| 4 | Giao diện, khay hệ thống, đa ngôn ngữ | 2 tuần | 11 | `v0.3.0-beta` | F2–F5 (giao diện), F9, F10, F11 | Dùng hoàn toàn bằng giao diện: radar, kéo thả, ghép đôi | ⏳ Đang làm phần cho buổi demo hackathon (mục 5.5) |
+| 4 | Giao diện, khay hệ thống, đa ngôn ngữ | 2 tuần | 11 | `v0.3.0-beta` | F2–F5 (giao diện), F9, F10, F11 | Dùng hoàn toàn bằng giao diện: radar, kéo thả, ghép đôi | ⏳ Phần lớn đã xong (từng việc: mục 5.2); còn thông báo lỗi theo mvp mục 8, đo RAM khi rảnh (N3), kiểm AC giao diện, D8 và phần cho buổi demo hackathon (mục 5.5) |
 | 5 | Đồng bộ clipboard | 1 tuần | 12 | `v0.4.0-beta` | F8 | Đồng bộ clipboard | ⏳ Code xong (module: [architecture.md](architecture.md) mục 3); còn ca ảnh 8192² vượt mvp N6 ([benchmark.md](benchmark.md) mục 9.4) và đợt đo (mục 5.4); chưa thử tay trên máy thật (Wayland, macOS, trình quản lý mật khẩu) |
 | 6 | Hoàn thiện, bộ cài, phát hành | 3 tuần | 15 | `v1.0.0` | F1, toàn bộ N1–N12 | Bộ cài 3 hệ điều hành, tài liệu người dùng, đã thử với người dùng thật | ⏳ Đang làm bộ cài Windows (Inno Setup, build thử chạy tay, chưa ký mã: [CONTRIBUTING.md](CONTRIBUTING.md) “Bộ cài Windows”); phần còn lại chưa làm |
 
@@ -297,17 +298,17 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 - **Xong khi** (đợt đo trên thiết bị thật, mục 5.4): D5. → **`v0.2.0-alpha`** (thời điểm gắn tag: mục 5.4).
 
 #### Giai đoạn 4 — Giao diện, khay hệ thống, đa ngôn ngữ
-- Cửa sổ chính theo wireframe mvp mục 7: radar có vòng quét động, mỗi thiết bị là một chấm có tên, biểu tượng hệ điều hành và trạng thái; nút “Nhập IP thủ công”.
-- Kéo thả file vào chấm (hoặc chuột phải → “Gửi file…”); hộp thoại chấp nhận ở máy nhận; danh sách lượt truyền với tiến độ/tốc độ/thời gian còn lại/trạng thái và nút hủy; thông báo hệ thống khi nhận xong; lịch sử theo từng thiết bị (mvp F5).
-- Hộp thoại ghép đôi; màn hình cài đặt đủ các mục F10.
-- Công tắc “Cho máy chưa ghép đôi thấy máy này” (mvp F10, mặc định bật): tắt thì node ngừng quảng bá mDNS nhưng vẫn duyệt và tự kết nối ra tới thiết bị tin cậy; đang ẩn mà không ở chế độ chờ ghép đôi (mvp F3) thì cắt kết nối ẩn danh ngay sau bắt tay TLS, không gửi `hello` (`protocol.md` mục 2.3, 8).
+- ✅ Cửa sổ chính theo mvp mục 7.1: khung chat hai cột, cột trái là các máy đã ghép đôi, mỗi máy một luồng; radar và “Nhập IP thủ công” ở màn “Tìm máy mới”.
+- ✅ Gửi file theo mvp F4 (thả lên máy ở cột trái hay vào luồng, nút “Gửi file”, chuột phải → “Gửi file…”); hộp thoại chấp nhận ở máy nhận; mỗi lượt truyền là một bong bóng trong luồng, có tiến độ/tốc độ/thời gian còn lại/trạng thái và nút hủy; thông báo hệ thống khi nhận xong; lịch sử theo từng thiết bị (mvp F5).
+- ✅ Hộp thoại ghép đôi; màn hình cài đặt các mục F10 (còn “Kiểm tra cập nhật”: [architecture.md](architecture.md) mục 3).
+- ✅ Công tắc “Cho máy chưa ghép đôi thấy máy này” (mvp F10, mặc định bật): tắt thì node ngừng quảng bá mDNS nhưng vẫn duyệt và tự kết nối ra tới thiết bị tin cậy; đang ẩn mà không ở chế độ chờ ghép đôi (mvp F3) thì cắt kết nối ẩn danh ngay sau bắt tay TLS, không gửi `hello` (`protocol.md` mục 2.3, 8).
 - ✅ Nút và màn hình “Chờ ghép đôi” (mvp F3, mục 7.5; `ui/wait_pairing.py`). Giao diện bật/tắt việc nhận ghép đôi trong lúc node đang chạy, theo công tắc ở F10 và việc mở/đóng màn hình đó, qua `Node.accept_pairing` (đã đổi được lúc chạy).
 - Các thông báo lỗi theo mvp mục 8.
-- Khay hệ thống, chạy nền (F9); node chạy trong tiến trình giao diện, một bản giao diện mỗi thư mục cấu hình ([architecture.md](architecture.md) mục 2).
+- ✅ Khay hệ thống, chạy nền (F9); node chạy trong tiến trình giao diện, một bản giao diện mỗi thư mục cấu hình ([architecture.md](architecture.md) mục 2).
 - IPC CLI↔giao diện (CLI gửi lệnh cho node của giao diện thay vì tự chạy node): **dời ra khỏi Giai đoạn 4**, chưa có lịch. Tới khi có, CLI và giao diện cùng thư mục cấu hình loại trừ nhau và CLI báo phải thoát giao diện trước (mvp mục 8).
   - Lưu ý khi làm IPC: tới `v0.2`, CLI in ra stdout đồng bộ ngay trên event loop của node, nên terminal ngừng đọc (ví dụ đang tạm dừng cuộn) có thể làm cả node đứng chờ. Máy khác trong LAN không gây ra được việc này. Khi node chạy trong tiến trình giao diện, việc in hay gửi sự kiện cho CLI qua IPC không được chặn event loop của node.
   - Node sống lâu trong tiến trình giao diện: mở lại `Node` (cùng tiến trình) hay để tiến trình khác lấy `node.lock` vừa nhả phải chờ đuôi đĩa của node cũ xong, không thì có thể mở lại đúng lượt mà thread đĩa cũ còn ghi và lượt nối lại hỏng; giữ một event loop suốt đời ứng dụng để đuôi đĩa chạy xong (đuôi đĩa: [architecture.md](architecture.md) mục 5, “Thứ tự `Node.close()`”).
-- Tiếng Việt và English bằng Qt Linguist (F11); dùng được bằng bàn phím, theo chế độ sáng/tối (N12).
+- ✅ Tiếng Việt và English bằng Qt Linguist (F11); dùng được bằng bàn phím, theo chế độ sáng/tối (N12; phần chưa kiểm tay: [architecture.md](architecture.md) mục 3).
 - Đo RAM khi rảnh (N3) ngay ở bản này.
 - Đo lại N1 trên hai máy thật: chuyển vào đợt đo (mục 5.4).
 - **Xong khi** (kiểm được ngay): dùng trọn vẹn không cần dòng lệnh; đạt AC giao diện của F2–F5, F9–F11.
@@ -393,7 +394,7 @@ Bản chính thức: [CONTRIBUTING.md](CONTRIBUTING.md). Tóm tắt:
 - **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `test:`, `chore:`), giúp viết `CHANGELOG.md` dễ dàng.
 - **CI** (`.github/workflows/ci.yml`): các bước kiểm tra và ma trận hệ điều hành × Python ở [CONTRIBUTING.md](CONTRIBUTING.md). `mypy` có từ đầu Giai đoạn 2 (cấu hình trong `pyproject.toml`).
 - **Đội subagent** trong `.claude/agents/`: vai trò và quy trình ở `.claude/CLAUDE.md`. Chỉ commit và push khi người dùng đồng ý.
-- **Phát hành:** các bước, cách đánh số và cách phát hành bản thử nghiệm ở [CONTRIBUTING.md](CONTRIBUTING.md). Build bộ cài tự động khi gắn tag và GitHub Release là việc của Giai đoạn 6; hiện chỉ có build thử bản CLI và bản GUI (zip), chạy tay (`workflow_dispatch`).
+- **Phát hành:** các bước, cách đánh số và cách phát hành bản thử nghiệm ở [CONTRIBUTING.md](CONTRIBUTING.md). Build bộ cài tự động khi gắn tag và GitHub Release là việc của Giai đoạn 6; hiện chỉ có build thử chạy tay (`workflow_dispatch`): bản CLI, bản GUI (zip) và bộ cài Windows thử (Inno Setup, chưa ký mã; [CONTRIBUTING.md](CONTRIBUTING.md) “Bộ cài Windows”).
 - **Theo dõi công việc:** GitHub Issues + Milestones tương ứng từng bản phát hành ở mục 5.1.
 
 ---

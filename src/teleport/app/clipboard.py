@@ -8,11 +8,12 @@ quyết định cả gửi lẫn nhận, nên clip chỉ đi khi **cả hai máy
 
 - **Gửi:** backend báo clipboard đổi (`on_change`, từ thread bất kỳ) → hẹn đọc sau
   `CLIP_DEBOUNCE` (báo mới đặt lại hẹn giờ). Không có máy đích (đang kết nối và đã bật) thì không
-  đọc và `LoopGuard.reset()`. Đọc (hạn `CLIP_READ_TIMEOUT`); nội dung nhạy cảm, rỗng, không hỗ
-  trợ → `reset()`; quá trần → `reset()` + `TOO_LARGE`. Fingerprint văn bản và `split_clip` chạy
-  trong executor một worker riêng. `LoopGuard.local_changed` False (clip vừa ghi từ máy khác) →
-  không gửi: máy chỉ gửi nội dung do chính người dùng nó tạo ra. Cùng một tuple message vào hàng
-  gửi của từng máy đích.
+  đọc và `LoopGuard.reset()`; xét lại trước `local_changed` và trước khi vào hàng gửi: máy đích
+  mất hết trong lúc đọc hay tách clip → `reset()`, không gửi. Đọc (hạn `CLIP_READ_TIMEOUT`); nội
+  dung nhạy cảm, rỗng, không hỗ trợ → `reset()`; quá trần → `reset()` + `TOO_LARGE`. Fingerprint
+  văn bản và `split_clip` chạy trong executor một worker riêng. `LoopGuard.local_changed` False
+  (clip vừa ghi từ máy khác) → không gửi: máy chỉ gửi nội dung do chính người dùng nó tạo ra. Cùng
+  một tuple message vào hàng gửi của từng máy đích.
 - **Hàng gửi** (`_ClipSender`, mỗi kết nối điều khiển một hàng, dựng khi có clip để gửi): một
   task gửi từng mảnh bằng `Connection.send`; ≤ 1 clip đang gửi + 1 clip chờ, clip mới thay clip
   chờ và cắt clip đang gửi sau mảnh hiện tại (bên nhận thấy `REPLACED`). Không đi qua `_Outbox`
@@ -719,6 +720,11 @@ class ClipboardSync:
                 return
         else:
             fingerprint = content.fingerprint
+        if not self._targets():
+            # Máy đích mất kết nối (hay bị tắt) trong lúc đọc: như `_debounce_fired`, không ghi
+            # nhận nội dung, để sao chép lại sau khi nối lại vẫn được gửi.
+            self._guard.reset()
+            return
         if not self._guard.local_changed(fingerprint):
             return  # clip vừa ghi từ máy khác (hay vẫn là nội dung đã gửi): không gửi
         self._generation += 1
@@ -736,7 +742,11 @@ class ClipboardSync:
         if msgs is None or self._closed:
             return
         clip = tuple(msgs)
-        for device_id in self._targets():
+        targets = self._targets()
+        if not targets:
+            self._guard.reset()  # máy đích mất trong lúc tách clip: như trên
+            return
+        for device_id in targets:
             self._enqueue_send(device_id, clip)
         log.debug("gửi clipboard %s, %d byte", content.kind.value, clip[0].total)
 

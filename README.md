@@ -115,9 +115,9 @@ Lần đầu Teleport mở cổng mạng, tường lửa Windows hỏi quyền: 
 1. **Mở lần đầu:** cửa sổ hiện tên máy này trong mạng. Bấm **Bắt đầu**. Tên này hiện với mọi máy trong cùng mạng.
 2. **Tìm máy mới:** cột trái là các máy đã ghép đôi, mỗi máy một cuộc trò chuyện (lúc đầu còn trống). Bấm nút kính lúp ở đầu cột hoặc **Ghép đôi máy mới** để mở trang **Tìm máy mới**: radar hiện các máy đang mở Teleport trong mạng. Không thấy máy kia thì gõ IP của máy đó vào ô **Nhập IP…** ở đầu trang rồi bấm **Ghép đôi** (ví dụ `192.168.1.5`; xem IP bằng lệnh `ipconfig`).
 3. **Ghép đôi (một lần cho mỗi cặp máy):** trên trang **Tìm máy mới**, bấm vào máy chưa ghép. Hai máy cùng hiện một mã 6 số: so mã trên hai màn hình, trùng thì bấm **Trùng khớp** ở **cả hai** máy, khác thì bấm **Không trùng**. Ghép xong, máy đó hiện ở cột trái.
-4. **Gửi file:** kéo một hoặc nhiều file thả lên máy kia ở cột trái, hoặc bấm đúp (hay chuột phải) vào máy đó → **Gửi file…**. Chưa gửi được thư mục; hãy chọn từng file.
+4. **Gửi file:** kéo một hoặc nhiều file thả lên máy kia ở cột trái, hoặc chuột phải vào máy đó → **Gửi file…**. Cũng có thể bấm vào máy đó để mở cuộc trò chuyện, rồi thả file vào luồng hay bấm **Gửi file** ở dưới (phím tắt Ctrl+O). Chưa gửi được thư mục; hãy chọn từng file.
 5. **Nhận file:** máy nhận hiện hộp hỏi ai gửi, file gì, nặng bao nhiêu và lưu vào đâu. Bấm **Nhận** hoặc **Từ chối**. File nhận được lưu vào thư mục `Teleport` trong thư mục Tải về (Downloads), và không bao giờ ghi đè file có sẵn: trùng tên thì thành `ten (1).ext`.
-6. **Theo dõi:** cột phải là danh sách lượt truyền với tiến độ, tốc độ, thời gian còn lại và nút **Hủy**. Rớt Wi-Fi hay tắt app nhận giữa chừng thì lượt truyền hiện **Đang nối lại…** và tự chạy tiếp phần còn thiếu khi hai máy thấy lại nhau (mở lại Teleport trên máy nhận). Xong thì hiện **Đã kiểm tra toàn vẹn**; ở máy nhận có thêm nút **Mở thư mục**.
+6. **Theo dõi:** khung phải là cuộc trò chuyện với máy đang chọn; mỗi lượt truyền là một bong bóng có tiến độ, tốc độ, thời gian còn lại và nút **Hủy**. Rớt Wi-Fi hay tắt app nhận giữa chừng thì lượt truyền hiện **Đang nối lại…** và tự chạy tiếp phần còn thiếu khi hai máy thấy lại nhau (mở lại Teleport trên máy nhận). Xong thì hiện **Đã kiểm tra toàn vẹn**; ở máy nhận, bong bóng có thêm nút **Hiện trong thư mục**. Nút **Mở thư mục** ở thanh **Lưu vào** dưới cùng cửa sổ mở thư mục nhận.
 7. **Chạy nền và thoát:** đóng cửa sổ thì Teleport vẫn chạy ở khay hệ thống và vẫn nhận file. Muốn tắt hẳn: chuột phải biểu tượng ở khay → **Thoát**. Nếu tắt hẳn máy **gửi** giữa chừng, lượt đó bị hủy và cần gửi lại.
 8. **Hủy ghép đôi:** chuột phải vào máy ở cột trái → **Hủy ghép đôi…**. Sau đó hai máy không gửi file cho nhau được nữa cho tới khi ghép đôi lại.
 
@@ -197,8 +197,8 @@ Phát hiện lỗ hổng? Xem [docs/SECURITY.md](docs/SECURITY.md).
 | — | ✅ Khám phá thiết bị & ghép đôi: mDNS, ghép đôi qua mạng, tự giữ kết nối, lệnh `teleport list` / `listen` / `pair` / `unpair`; đạt mvp N1 (đo trên máy ảo bridged) |
 | `v0.1.0-alpha` | ⏸ Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi: lệnh `teleport send` / `receive` (code xong; phát hành sau đợt đo trên thiết bị thật) |
 | `v0.2.0-alpha` | ⏳ Tự nối lại cả sau khi rớt mạng lâu, tắt app nhận hay khởi động lại máy nhận; chỉ gửi phần còn thiếu |
-| `v0.3.0-beta` | ⏳ Giao diện radar, khay hệ thống, Tiếng Việt / English (đang làm phần tối thiểu cho buổi demo hackathon) |
-| `v0.4.0-beta` | ⏳ Đồng bộ clipboard (code xong; chờ đợt đo trên thiết bị thật) |
+| `v0.3.0-beta` | ⏳ Giao diện (cuộc trò chuyện theo từng máy, radar tìm máy mới), khay hệ thống, Tiếng Việt / English (đang làm phần tối thiểu cho buổi demo hackathon) |
+| `v0.4.0-beta` | ⏳ Đồng bộ clipboard (code xong; còn việc tồn đọng, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v1.0.0` | Bộ cài cho Windows, macOS, Linux; tài liệu người dùng |
 
 **Sau v1.0:** app Android, chế độ khách qua trình duyệt cho điện thoại, gửi tới nhiều thiết bị cùng lúc, gửi và đồng bộ thư mục, app iOS, quảng bá ẩn danh.
@@ -235,7 +235,7 @@ Nếu PowerShell chặn `Activate.ps1`, chạy `Set-ExecutionPolicy -Scope Curre
 | `teleport list` | Liệt kê các máy thấy được qua mDNS trong vài giây |
 | `teleport listen` | Chờ ghép đôi: hiện mã 6 số, hỏi xác nhận |
 | `teleport pair <tên \| tiền tố mã \| ip[:cổng]>` | Ghép đôi với một máy |
-| `teleport unpair <thiết bị>` | Hủy ghép đôi (khi không có node nào — `listen`, `receive`, `send` — đang chạy) |
+| `teleport unpair <thiết bị>` | Hủy ghép đôi (khi Teleport không chạy với thư mục cấu hình này: tắt giao diện, kể cả biểu tượng ở khay, và mọi lệnh `listen`, `pair`, `receive`, `send`) |
 | `teleport receive [--dir <thư mục>] [--yes]` | Chờ nhận file từ các máy đã ghép đôi, hỏi `[c/k]` mỗi lượt (`--yes`: tự nhận); mặc định lưu vào thư mục nhận đã lưu trong cài đặt (giao diện), chưa có thì `Teleport` trong thư mục Tải về; Ctrl+C tạm dừng lượt đang nhận, chạy lại để nhận tiếp |
 | `teleport send <file...> --to <thiết bị> [--address ip[:cổng]] [--limit-rate 20M]` | Gửi file tới một máy đã ghép đôi (máy đó chạy `teleport receive`); Ctrl+C để hủy; mất kết nối thì tự nối lại, chờ tới 24 giờ |
 | `teleport --version` | Xem phiên bản |

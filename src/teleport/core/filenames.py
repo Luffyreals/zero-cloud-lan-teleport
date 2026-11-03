@@ -234,29 +234,64 @@ def dedupe_offer_names(names: Sequence[str]) -> list[str]:
     nguyên, các tên sau thành ` (1)`, ` (2)`… Số được chọn để không trùng bất kỳ tên nào
     khác trong `offer`, kể cả tên đứng sau: `[a.txt, a.txt, a (1).txt]` →
     `[a.txt, a (2).txt, a (1).txt]`. Trùng với file đã có trên đĩa do `app` lo.
+
+    Độ phức tạp gần tuyến tính theo số tên, kể cả khi nhiều tên dài khác nhau bị cắt thành cùng
+    một tên đánh số (`_numbering_key`).
     """
     cleaned = [sanitize_filename(name) for name in names]
     keys = [dedupe_key(name) for name in cleaned]
     taken = set(keys)  # mọi tên gốc giữ chỗ trước, tên đánh số không được lấy của chúng
     seen: set[str] = set()
-    next_number: dict[str, int] = {}
+    # `restore` chạy lại hàm này cho lượt đã lưu (`core.transfer`), nên kết quả phải giống hệt
+    # thuật toán cũ: mỗi khóa tên gốc nhớ `group_next`, tên trùng lấy số n ≥ `group_next` nhỏ
+    # nhất mà tên đánh số chưa nằm trong `taken`. `band_next` chỉ là đường tắt: khóa của một dải
+    # số cùng số chữ số → số mà mọi số nhỏ hơn trong dải đều đã nằm trong `taken` (`taken` chỉ
+    # lớn dần), nên nhảy qua chúng không đổi kết quả.
+    group_next: dict[str, int] = {}
+    band_next: dict[str, int] = {}
     result: list[str] = []
     for name, key in zip(cleaned, keys, strict=True):
         if key not in seen:
             seen.add(key)
             result.append(name)
             continue
-        n = next_number.get(key, 1)
-        while True:
-            candidate = numbered(name, n)
-            n += 1
-            candidate_key = dedupe_key(candidate)
-            if candidate_key not in taken:
-                break
-        next_number[key] = n
-        taken.add(candidate_key)
-        result.append(candidate)
+        start = group_next.get(key, 1)
+        found: str | None = None
+        digits = 1
+        while found is None:
+            low, high = 10 ** (digits - 1), 10**digits
+            digits += 1
+            if high <= start:
+                continue
+            band_key = _numbering_key(name, digits - 1)
+            known = max(low, band_next.get(band_key, low))
+            n = max(start, known)
+            while n < high:
+                candidate = numbered(name, n)
+                n += 1
+                if dedupe_key(candidate) not in taken:
+                    found = candidate
+                    break
+            # Mọi số từ `max(start, known)` tới trước `n` đều đã bị lấy; chỉ nối dài được đường
+            # tắt khi đoạn đó liền với nó (`start ≤ known`).
+            if start <= known:
+                band_next[band_key] = n
+        group_next[key] = n
+        taken.add(dedupe_key(found))
+        result.append(found)
     return result
+
+
+def _numbering_key(name: str, digits: int) -> str:
+    """Khóa chung của các tên đánh số có `digits` chữ số làm từ tên đã làm sạch `name`.
+
+    Trong một dải số cùng số chữ số, `numbered(name, n)` có dạng `P + " (n)" + E` với `P`, `E`
+    chỉ phụ thuộc `name` và độ dài byte của hậu tố, vì `_fit` chỉ dùng độ dài đó. Thay hậu tố
+    bằng chừng ấy ký tự NUL (không thể có trong tên đã làm sạch) cho một chuỗi xác định đúng
+    cặp (`P`, `E`): hai tên khác nhau nhưng bị cắt thành cùng `P`, `E` dùng chung một bộ đếm,
+    nên không phải đếm lại từ đầu qua các số tên kia đã lấy (bậc hai với tên dài 255 byte).
+    """
+    return dedupe_key(_fit(name, MAX_NAME_BYTES, "\x00" * (3 + digits)))
 
 
 def prepare_outgoing_name(name: str) -> str:

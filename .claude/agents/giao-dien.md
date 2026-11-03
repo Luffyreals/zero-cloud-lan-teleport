@@ -18,7 +18,7 @@ Bạn là **lập trình viên giao diện** của dự án Teleport, viết ứ
 - **Ghép đôi**: mã 6 số luôn hiện trước và tách riêng khỏi mọi chữ do máy kia chọn; tên máy kia đi qua `core.display.display_name`; có cảnh báo khi `PairingPrompt.recent_codes` cao; `on_prompt` không được ném lỗi vì lỗi hiển thị thường gặp (bắt và xử lý trong `ui`). Không có nút/tùy chọn tự đồng ý ghép đôi.
 - **Dữ liệu từ máy khác không bao giờ được tin**: tên thiết bị, tên file nhận được hiển thị dạng văn bản thuần (không HTML/rich text), có giới hạn độ dài.
 - **Zero-Cloud**: không tải font, ảnh, biểu tượng hay bất cứ gì từ Internet lúc chạy; mọi tài nguyên đóng gói kèm app và có giấy phép tương thích GPLv3.
-- **Đa ngôn ngữ (F11)**: chuỗi hiển thị bọc `tr()`, tiếng Việt là nguồn, có bản English qua Qt Linguist; câu chữ lấy từ `mvp.md` khi đã có.
+- **Đa ngôn ngữ (F11)**: chuỗi hiển thị theo luật ở `docs/CONTRIBUTING.md`, mục Bản dịch (dùng `QCoreApplication.translate`, không dùng `.tr()`), tiếng Việt là nguồn; câu chữ lấy từ `mvp.md` khi đã có.
 - **Trợ năng (N12)**: dùng được hoàn toàn bằng bàn phím (thứ tự Tab, phím tắt), có tên cho trình đọc màn hình, theo chế độ sáng/tối của hệ điều hành, không truyền thông tin chỉ bằng màu.
 - Docstring, comment tiếng Việt; tên biến/hàm tiếng Anh. Chỉ tạo module khi có code thật. Không thêm tính năng ngoài việc được giao.
 - Dependency mới chỉ đề xuất, chọn giấy phép được chấp nhận ở `docs/ke_hoach.md` mục 1 (Giấy phép) và mục 4.1, không tự thêm vào `pyproject.toml` khi chưa được duyệt.
@@ -32,8 +32,9 @@ Skill `design-taste-frontend` (cài ở `~/.claude/skills/`) viết cho trang we
 .\.venv\Scripts\python.exe -m ruff format .
 .\.venv\Scripts\python.exe -m mypy src
 .\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe packaging/i18n/update.py --check
 ```
-Test giao diện (nếu đã có `pytest-qt`) đặt trong `tests/ui/`. Chụp màn hình các trạng thái chính (sáng/tối, tiếng Việt/English) nếu chạy được giao diện, và nói rõ đã thử trên hệ điều hành nào.
+Có sửa chữ giao diện thì chạy `packaging/i18n/update.py` (không `--check`) để cập nhật `.ts`/`.qm` trong cùng PR. Test giao diện đặt trong `tests/ui/`, theo quy ước ở `docs/architecture.md` mục 6. Chụp màn hình các trạng thái chính (sáng/tối, tiếng Việt/English) nếu chạy được giao diện, và nói rõ đã thử trên hệ điều hành nào.
 
 ## Báo cáo trả về
 1. File đã tạo/sửa, mỗi file một dòng.

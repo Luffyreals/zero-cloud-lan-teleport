@@ -333,12 +333,13 @@ def outcome_message(result: PairingFinished, *, seen_name: str | None = None) ->
     """
     outcome = result.outcome
     target = _target(result)
-    x = result.peer_name or seen_name or target
+    peer = result.peer_name or seen_name
+    x = _name_label(peer) if peer else target
     responder = result.role is Role.RESPONDER
     if outcome is PairingOutcome.UNREACHABLE and seen_name is not None:
-        return [_unreachable_seen(seen_name), _HOTSPOT_HINT]
+        return [_unreachable_seen(_name_label(seen_name)), _HOTSPOT_HINT]
     if outcome is _PAIRED:
-        name = result.device.name if result.device is not None else x
+        name = _name_label(result.device.name) if result.device is not None else x
         return [f"Đã ghép đôi với {name}."]
     if outcome in _UNFINISHED:
         if result.code_shown:
@@ -349,7 +350,7 @@ def outcome_message(result: PairingFinished, *, seen_name: str | None = None) ->
             return [f"Một máy tự xưng là {x} đã yêu cầu ghép đôi nhưng phiên dừng trước khi hiện mã."]
         return [f"Ghép đôi với {x} chưa xong vì phiên dừng trước khi hiện mã. Hãy thử lại."]
     if outcome is PairingOutcome.IDENTITY_CONFLICT:
-        known = result.known_name or x
+        known = _name_label(result.known_name) if result.known_name else x
         if responder:
             return [
                 f"Một máy chưa xác minh tự xưng là {known} nhưng dùng danh tính khác với lúc ghép đôi. "
@@ -431,7 +432,7 @@ def _view_dict(view: DeviceView) -> dict[str, Any]:
 
 def connect_failed_message(view: DeviceView, result: ConnectResult) -> list[str]:
     """Câu báo không kết nối được tới thiết bị đã ghép đôi (docs/mvp.md mục 8)."""
-    x = view.name
+    x = _name_label(view.name)
     short_id = view.device_id[:8]
     if result is ConnectResult.REJECTED:
         return [
@@ -568,6 +569,7 @@ class _Prompter:
         self._prompt: PairingPrompt | None = None
         self._shown_at = 0.0
         self._stdin_closed = False
+        self._told_closed = False  # đã in `_PAIR_STDIN_CLOSED` (chỉ in một lần)
         self.stopping = False  # listen: node đang đóng (Ctrl+C), không mời chờ tiếp
 
     def on_prompt(self, prompt: PairingPrompt) -> None:
@@ -591,7 +593,7 @@ class _Prompter:
             known_name=prompt.known_name,
         )
         if self._stdin_closed:
-            self._decide(False)
+            self._reject_closed()
 
     def on_finished(self, result: PairingFinished) -> None:
         if self._prompt is not None and self._prompt.session_id == result.session_id:
@@ -610,7 +612,7 @@ class _Prompter:
         if line is None:
             self._stdin_closed = True
             if self._prompt is not None:
-                self._decide(False)
+                self._reject_closed()
             return
         if self._prompt is None or read_at < self._shown_at:
             return  # không có lời hỏi, hoặc dòng gõ trước lúc hiện mã
@@ -624,6 +626,14 @@ class _Prompter:
         else:
             self._output.text("Hãy gõ c (trùng) hoặc k (không trùng).")
             self._output.ask("Trùng khớp? [c/k]: ")
+
+    def _reject_closed(self) -> None:
+        """stdin đã đóng: từ chối lời hỏi đang mở; lần đầu in lý do (giống `receive`)."""
+        self._output.close_question()
+        if not self._told_closed:
+            self._told_closed = True
+            self._output.text(_PAIR_STDIN_CLOSED)
+        self._decide(False)
 
     def _decide(self, accepted: bool) -> bool:
         prompt, self._prompt = self._prompt, None
@@ -1006,7 +1016,7 @@ def _choose_device(output: _Output, query: str, views: tuple[DeviceView, ...]) -
     except DeviceNotFound:
         online = [v for v in views if v.online]
         if online:
-            extra = ["Thiết bị đang thấy:", *(f"  {v.device_id[:8]}  {v.name}" for v in online)]
+            extra = ["Thiết bị đang thấy:", *(f"  {v.device_id[:8]}  {_name_label(v.name)}" for v in online)]
         else:
             extra = ["(chưa thấy thiết bị nào)"]
         output.error(
@@ -1020,14 +1030,14 @@ def _choose_device(output: _Output, query: str, views: tuple[DeviceView, ...]) -
         output.error(
             "ambiguous",
             f"“{query}” khớp nhiều thiết bị; hãy nhập mã thiết bị dài hơn:",
-            extra=[f"  {d.device_id}  {d.name}" for d in e.candidates],
+            extra=[f"  {d.device_id}  {_name_label(d.name)}" for d in e.candidates],
             candidates=_candidates(e.candidates),
         )
         return None
     if not view.online or not view.addresses or view.port is None:
         output.error(
             "offline",
-            f"“{view.name}” ({view.device_id[:8]}) không có trong mạng lúc này. "
+            f"“{_name_label(view.name)}” ({view.device_id[:8]}) không có trong mạng lúc này. "
             f"Nếu mạng chặn mDNS, hãy nhập địa chỉ IP: {_IP_HINT}",
             device_id=view.device_id,
             name=view.name,
@@ -1071,17 +1081,19 @@ async def run_list(args: argparse.Namespace, out: TextIO, err: TextIO) -> int:
         return 0
     online = [v for v in result.devices if v.online]
     offline_paired = [v for v in result.devices if v.paired and not v.online]
-    text = [f"Máy này: {result.name} ({result.device_id[:8]}), cổng {result.port}"]
+    text = [f"Máy này: {_name_label(result.name)} ({result.device_id[:8]}), cổng {result.port}"]
     if online:
         text.append("Thiết bị trong mạng:")
         for v in online:
             where = ", ".join(f"{ip}:{v.port}" for ip in v.addresses)
-            text.append(f"  {v.name}  {v.device_id[:8]}  {_os_label(v.os)}  {_paired_label(v)}  {where}")
+            text.append(
+                f"  {_name_label(v.name)}  {v.device_id[:8]}  {_os_label(v.os)}  {_paired_label(v)}  {where}"
+            )
     else:
         text.append(_NO_DEVICES)
     if offline_paired:
         text.append("Thiết bị đã ghép đôi nhưng không thấy trong mạng:")
-        text.extend(f"  {v.name}  {v.device_id[:8]}" for v in offline_paired)
+        text.extend(f"  {_name_label(v.name)}  {v.device_id[:8]}" for v in offline_paired)
     # Gợi ý cài lại (mvp F3): máy chưa ghép đôi trùng tên với một máy đã ghép đôi đang offline.
     offline_names = {_fold(v.name) for v in offline_paired}
     hinted: set[str] = set()
@@ -1090,7 +1102,8 @@ async def run_list(args: argparse.Namespace, out: TextIO, err: TextIO) -> int:
         if not v.paired and key in offline_names and key not in hinted:
             hinted.add(key)
             text.append(
-                f"Có một {v.name} mới chưa ghép đôi. Nếu máy đó vừa cài lại Teleport, hãy ghép đôi lại."
+                f"Có một {_name_label(v.name)} mới chưa ghép đôi. "
+                "Nếu máy đó vừa cài lại Teleport, hãy ghép đôi lại."
             )
     output.text(*text)
     return 0
@@ -1308,6 +1321,7 @@ _NODE_LOCKED_HINT = (
 _ASK_RECEIVE = "Nhận? [c/k]: "
 _STDIN_CLOSED = "Không đọc được câu trả lời (đầu vào đã đóng) nên đã từ chối. Hãy dùng `--yes` để tự nhận."
 _RECEIVE_REJECTED = "Đã từ chối."
+_PAIR_STDIN_CLOSED = "Không đọc được câu trả lời (đầu vào đã đóng) nên đã từ chối ghép đôi."
 
 
 def _terminal_width() -> int:
@@ -2150,12 +2164,15 @@ def _trusted_lookup_error(output: _Output, query: str, error: DeviceNotFound | A
         output.error(
             "ambiguous",
             f"“{query}” khớp nhiều thiết bị; hãy nhập mã thiết bị dài hơn:",
-            extra=[f"  {d.device_id}  {d.name}" for d in error.candidates],
+            extra=[f"  {d.device_id}  {_name_label(d.name)}" for d in error.candidates],
             candidates=_candidates(error.candidates),
         )
         return
     if error.known:
-        extra = ["Các thiết bị tin cậy:", *(f"  {d.device_id[:8]}  {d.name}" for d in error.known)]
+        extra = [
+            "Các thiết bị tin cậy:",
+            *(f"  {d.device_id[:8]}  {_name_label(d.name)}" for d in error.known),
+        ]
     else:
         extra = ["(chưa ghép đôi với thiết bị nào)"]
     output.error(
@@ -2855,7 +2872,7 @@ def cmd_unpair(args: argparse.Namespace) -> int:
         obj = {"time": _utc_now(), "removed": True, "device_id": device.device_id, "name": device.name}
         print(json.dumps(obj, ensure_ascii=False), flush=True)
     else:
-        print(f"Đã hủy ghép đôi với {device.name} ({device.device_id[:8]}).", flush=True)
+        print(f"Đã hủy ghép đôi với {_name_label(device.name)} ({device.device_id[:8]}).", flush=True)
     return 0
 
 

@@ -496,9 +496,16 @@ def _unpair_from_settings(run, gui_wait, apps, b_id: str, a: Path, clear: bool, 
     box.checkBox().setChecked(clear)
     [yes] = [b for b in box.buttons() if b.text().replace("&", "") == UNPAIR_YES]
     yes.click()
-    from teleport.trust.store import TrustStore
+    from teleport.trust.store import TrustStore, TrustStoreError
 
-    yield gui_wait(lambda: TrustStore.load(a).get(b_id) is None, 10, "trusted.json bỏ B")
+    def b_gone() -> bool:
+        # Luồng node đang thay trusted.json bằng os.replace: Windows có thể từ chối đọc đúng lúc đó.
+        try:
+            return TrustStore.load(a).get(b_id) is None
+        except TrustStoreError:
+            return False
+
+    yield gui_wait(b_gone, 10, "trusted.json bỏ B")
     yield gui_wait(
         lambda: (
             not [
@@ -669,6 +676,7 @@ def test_export_logs_real_zip_has_info_txt(
     assert "Đã lưu log vào" in seen["notice"]
 
 
+@pytest.mark.slow
 def test_selftest_builds_settings_page(tmp_path):
     env = dict(os.environ)
     env["QT_QPA_PLATFORM"] = "offscreen"
@@ -690,7 +698,8 @@ def test_selftest_builds_settings_page(tmp_path):
     p = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env, timeout=60)
     out = p.stdout.decode("utf-8", "replace")
     assert p.returncode == 0, p.stderr.decode("utf-8", "replace")
-    assert "SETTINGS_PAGES 1" in out or "SETTINGS_PAGES 2" in out, out
+    # _selftest dựng đúng một SettingsPage; so cả dòng để "10" không khớp nhầm.
+    assert "SETTINGS_PAGES 1" in out.splitlines(), out
     assert b"Traceback" not in p.stderr
 
 
