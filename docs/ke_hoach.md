@@ -4,7 +4,7 @@
 > **Nguồn duy nhất cho:** các quyết định đã chốt, thiết kế kỹ thuật, lộ trình và **trạng thái giai đoạn**, danh sách phép đo của đợt đo trên thiết bị thật (mục 5.4), quy trình, kiểm thử, rủi ro kỹ thuật, việc cần chốt.
 > **Không chứa:** phạm vi, tính năng, tiêu chí chấp nhận và con số chất lượng → [mvp.md](mvp.md) (tham chiếu theo mã F1–F12, N1–N12). Ý tưởng, nguyên tắc và tầm nhìn → [y_tuong.md](y_tuong.md). Thuật ngữ, quy ước và bản đồ tài liệu → [README.md](README.md).
 > **Bản chính thức về kỹ thuật:** đặc tả giao thức [protocol.md](protocol.md) và trạng thái từng module [architecture.md](architecture.md); khi lệch nhau thì hai file đó đúng.
-> **Cập nhật:** 2026-11-02
+> **Cập nhật:** 2026-11-03
 
 ---
 
@@ -21,6 +21,7 @@
 | Ưu tiên | **Hoàn thành MVP v1.0 trước** (desktop ↔ desktop); điện thoại và các việc “Sau v1.0” chưa làm |
 | Nguồn lực | Làm một mình |
 | Thời hạn | Không có hạn cố định → kiểm soát bằng các bản phát hành (mục 5), mốc tham khảo ~15 tuần tới v1.0 |
+| Hackathon | Demo khoảng 08/11/2026, phạm vi [mvp.md](mvp.md) mục 4.1, lịch mục 5.5 |
 | Ngôn ngữ giao diện | Tiếng Việt và English |
 | Tên sản phẩm | **Zero-Cloud LAN Teleport** (dạng viết liền `zero-cloud-lan-teleport`, đã dùng cho repo và tên gói phân phối); tên ngắn hiển thị trong app và bộ cài là **ZCL Teleport** (`APP_NAME` ở `src/teleport/ui/texts.py`), còn định danh kỹ thuật (gói `teleport`, lệnh `teleport`, `Teleport.exe`, thư mục cấu hình và thư mục nhận) giữ “Teleport” để không mất dữ liệu cũ; biểu tượng là logo vẽ ở `src/teleport/ui/logo.py`. Chốt 01/11/2026 |
 

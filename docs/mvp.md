@@ -3,7 +3,7 @@
 > **Vai trò:** đặc tả sản phẩm — giải quyết vấn đề gì, cho ai, gồm những gì, trông ra sao, đạt chuẩn nào thì được phát hành.
 > **Nguồn duy nhất cho:** phạm vi MVP, tính năng và tiêu chí chấp nhận (F1–F12), yêu cầu phi chức năng (N1–N12), thông báo lỗi, tiêu chí phát hành.
 > **Không chứa:** thiết kế kỹ thuật, lộ trình và tiến độ → [ke_hoach.md](ke_hoach.md). Ý tưởng, nguyên tắc và tầm nhìn → [y_tuong.md](y_tuong.md). Thuật ngữ, quy ước và bản đồ tài liệu → [README.md](README.md).
-> **Cập nhật:** 2026-11-02
+> **Cập nhật:** 2026-11-03
 
 ---
 
@@ -79,9 +79,11 @@ Thứ tự làm các mục “không có” sau v1.0: [ke_hoach.md](ke_hoach.md)
 
 Bản tối thiểu để demo ở buổi demo hackathon, nhỏ hơn MVP v1.0 ở trên. Lịch làm: [ke_hoach.md](ke_hoach.md) mục 5.5.
 
-**Có:** giao diện tối thiểu trên Windows: radar (danh sách thiết bị, nút nhập IP), ghép đôi bằng mã 6 số, kéo thả hoặc “Gửi file…”, hộp thoại Nhận / Từ chối, danh sách lượt truyền có tiến độ, tốc độ, trạng thái “Đang nối lại…” và nút hủy; tự nối lại và kiểm tra toàn vẹn như F6, F7; bản zip chạy không cần cài Python. CLI giữ như F12.
+**Có:** giao diện trên Windows: danh sách cuộc trò chuyện theo từng máy, trang “Tìm máy mới” (radar, ô nhập IP), ghép đôi bằng mã 6 số, kéo thả hoặc “Gửi file…”, hộp thoại Nhận / Từ chối, lượt truyền có tiến độ, tốc độ, trạng thái “Đang nối lại…” và nút hủy; tự nối lại và kiểm tra toàn vẹn như F6, F7; bản zip chạy không cần cài Python. CLI giữ như F12.
 
-**Để sau hackathon:** màn hình “Chờ ghép đôi” (F3), English (F11), trợ năng (N12), clipboard (F8), bộ cài (N11), macOS và Linux có giao diện; hệ điều hành bằng chữ và trạng thái “đang bận” (F2); luồng máy đã ghép đôi cài lại Teleport (F3, mục 8).
+**Có trong bản zip nhưng không nằm trong kịch bản demo:** trang “Chờ ghép đôi” (F3), hệ điều hành bằng chữ và trạng thái “đang bận” (F2), khay hệ thống và chạy nền (F9), trang Cài đặt kèm khởi động cùng Windows (F10), English (F11), đồng bộ clipboard (F8), dùng bằng bàn phím và trình đọc màn hình, sáng/tối (N12). Bộ cài thử Inno Setup (N11) được build riêng, không phải bản zip, chưa ký số.
+
+**Để sau hackathon:** kiểm thủ công đủ N12; bộ cài ký số và bản phát hành chính thức; macOS và Linux có bản đóng gói; luồng máy đã ghép đôi cài lại Teleport trên giao diện (F3, mục 8; CLI đã gợi ý ở `teleport list`).
 
 **Đạt khi** cả năm tiêu chí sau đạt trên **hai máy Windows thật cùng một mạng Wi-Fi**, mỗi máy chạy bản zip, không gõ lệnh nào (trừ lệnh kiểm hash). Mỗi tiêu chí ghi kết quả và ngày vào [benchmark.md](benchmark.md).
 

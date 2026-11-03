@@ -16,10 +16,11 @@
 </div>
 
 > [!NOTE]
-> **Teleport đang được phát triển. Chưa có bản phát hành: bản thử nghiệm đầu tiên được gắn tag sau đợt đo trên thiết bị thật ([docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4), chưa có bộ cài.**
+> **Teleport đang được phát triển. Chưa có bản phát hành: bản thử nghiệm đầu tiên được gắn tag sau đợt đo trên thiết bị thật ([docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4).**
 > - **Đã có:** danh tính thiết bị (chứng chỉ tự ký), kênh TLS 1.3 với xác thực hai chiều giữa các thiết bị tin cậy, khám phá thiết bị qua mDNS, ghép đôi qua mạng bằng mã 6 số có nonce cam kết, tự giữ kết nối tới thiết bị đã ghép đôi, các lệnh `teleport identity` / `list` / `listen` / `pair` / `unpair`. Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi (`teleport send` / `receive`): hỏi trước khi nhận, kiểm tra toàn vẹn từng khối và cả file, không bao giờ ghi đè file sẵn có, mất kết nối thì tự nối lại (chờ tới 24 giờ), kể cả sau khi dừng hay tắt `teleport receive` rồi chạy lại, chỉ gửi phần còn thiếu. Số đo thực tế: [docs/benchmark.md](docs/benchmark.md).
-> - **Đang làm:** giao diện tối thiểu cho Windows (radar, ghép đôi, kéo thả gửi file, hộp hỏi nhận, danh sách lượt truyền) và bản zip chạy không cần cài Python, cho buổi demo hackathon ([docs/mvp.md](docs/mvp.md) mục 4.1); đồng bộ clipboard văn bản và ảnh giữa các máy đã ghép đôi (code xong, chờ đợt đo trên thiết bị thật). Cách dùng: [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng).
-> - **Chưa có:** bộ cài; giao diện trên macOS và Linux.
+> - **Giao diện Windows (đã có):** danh sách cuộc trò chuyện theo từng máy, trang “Tìm máy mới” (radar, nhập IP) và trang “Chờ ghép đôi”, ghép đôi bằng mã 6 số, kéo thả, dán hoặc “Gửi file…”, hộp hỏi nhận, tiến độ lượt truyền và tự nối lại; khay hệ thống và chạy nền; trang Cài đặt; giao diện English; khởi động cùng Windows; đồng bộ clipboard văn bản và ảnh (bật riêng cho từng máy); dùng được bằng bàn phím và trình đọc màn hình. Bản zip chạy không cần cài Python và bộ cài thử Inno Setup (`packaging/inno/teleport.iss`) được build tay qua GitHub Actions, chưa ký số. Cách dùng: [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng).
+> - **Chưa có:** bản phát hành chính thức; bộ cài đã ký số; bản đóng gói cho macOS và Linux (giao diện trên hai hệ này mới chạy trong test tự động).
+> - **Hackathon:** demo 08/11, phạm vi ở [docs/mvp.md](docs/mvp.md) mục 4.1.
 > - **Chưa đo đủ trên thiết bị thật:** số đo hiện có là trên một máy (loopback) và máy ảo, cộng một lần đo tay giữa hai máy thật chỉ để tham khảo; đo đầy đủ qua mạng thật giữa hai máy, với ổ đích chậm và trên các hệ điều hành khác sẽ làm một đợt sau, và các bản thử nghiệm được phát hành sau đợt đo đó ([docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4).
 >
 > Các tính năng bên dưới là **mục tiêu của v1.0**. Tiến độ xem ở [Lộ trình](#lộ-trình); lịch sử thay đổi ở [docs/CHANGELOG.md](docs/CHANGELOG.md).
