@@ -1218,6 +1218,7 @@ def list_cfg(tmp_path):
 
 async def test_cl19_list_text(list_cfg, cli_mdns):
     from teleport.app.node import default_device_name
+    from teleport.core.display import display_name
 
     d, me, peers, seed = list_cfg
     cli_mdns.seed = seed
@@ -1225,7 +1226,8 @@ async def test_cl19_list_text(list_cfg, cli_mdns):
     assert code == 0, err
     b8, c8, d8 = (peers[k].device_id[:8] for k in "BCD")
     lines = out.splitlines()
-    assert f"Máy này: {default_device_name(me)} ({me.device_id[:8]}), cổng 47474" in lines, out
+    # Tên máy này lấy từ hostname, có thể dài hơn giới hạn hiện của `display_name` (máy macOS của CI).
+    assert f"Máy này: {display_name(default_device_name(me))} ({me.device_id[:8]}), cổng 47474" in lines, out
     i = lines.index("Thiết bị trong mạng:")
     assert lines[i + 1] == f"  B  {b8}  Windows  đã ghép đôi  192.0.2.10:47474, 192.0.2.11:47474", out
     assert lines[i + 2] == f"  C  {c8}  macOS  chưa ghép đôi  192.0.2.20:50000", out
