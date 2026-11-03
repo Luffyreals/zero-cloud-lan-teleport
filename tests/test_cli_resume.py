@@ -302,6 +302,7 @@ def finish_send_and_receive(net, send, recv2, src: Path, n4_extra: int) -> int:
 
 
 @pytest.mark.slow
+@pytest.mark.demo
 def test_killed_receive_mid_transfer_then_restarted_finishes(pair_dirs, procs, tcp_proxy, n4_extra):
     net = pair_dirs
     recv = procs(receive_cmd(net))

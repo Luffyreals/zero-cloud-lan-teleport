@@ -311,6 +311,7 @@ async def test_pair_with_without_prompt_raises_before_io(service_parts, monkeypa
 # --- P1, P2: đường thành công ---------------------------------------------------------------------
 
 
+@pytest.mark.demo
 @integration
 async def test_p1_pairing_success_saves_both_sides(node_factory, fast):
     B = await node_factory("B", accept_pairing=True, answer=True)
@@ -398,6 +399,7 @@ async def test_p2_control_connections_work_after_pairing_and_after_restart(node_
 # --- P3–P8: từ chối, hết giờ, bận, thời gian chờ ----------------------------------------------------
 
 
+@pytest.mark.demo
 @integration
 async def test_p3_responder_rejects(node_factory):
     B = await node_factory("B", accept_pairing=True, answer=False)
