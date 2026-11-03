@@ -496,9 +496,16 @@ def _unpair_from_settings(run, gui_wait, apps, b_id: str, a: Path, clear: bool, 
     box.checkBox().setChecked(clear)
     [yes] = [b for b in box.buttons() if b.text().replace("&", "") == UNPAIR_YES]
     yes.click()
-    from teleport.trust.store import TrustStore
+    from teleport.trust.store import TrustStore, TrustStoreError
 
-    yield gui_wait(lambda: TrustStore.load(a).get(b_id) is None, 10, "trusted.json bỏ B")
+    def b_gone() -> bool:
+        # Luồng node đang thay trusted.json bằng os.replace: Windows có thể từ chối đọc đúng lúc đó.
+        try:
+            return TrustStore.load(a).get(b_id) is None
+        except TrustStoreError:
+            return False
+
+    yield gui_wait(b_gone, 10, "trusted.json bỏ B")
     yield gui_wait(
         lambda: (
             not [
