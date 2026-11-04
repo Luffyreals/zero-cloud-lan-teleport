@@ -411,7 +411,8 @@ async def test_begin_close_suspends_receiving_before_cancelling_sends_and_pendin
     crec = app_helpers.TransferRecorder("C")
     C = await node_factory("C", node_kwargs={"on_transfer_event": crec.on_update})
     C.connect_hint(A.id, [LOCAL], A.port)
-    await wait_until(lambda: C.id in A.connected_devices(), 5, "C chưa nối tới A")
+    # 15 s: runner CI chạy -n auto có lúc mất quá 5 s mới xong bắt tay TLS hai chiều.
+    await wait_until(lambda: C.id in A.connected_devices(), 15, "C chưa nối tới A")
     recv_key = await B.transfers.send(A.id, [make_file(net.src, "lon.bin", 16 * MiB)])
     offer = await A.trec.wait_kind("OfferReceived", recv_key.transfer_id)
     A.transfers.decide(offer.key, True)
@@ -1023,7 +1024,7 @@ def suspend_blocked(T, transfer_nodes, tcp_proxy, payload_meter, write_spy, monk
         opener.connect_hint(other.id, [LOCAL], proxy.port)
         await wait_until(
             lambda: other.id in opener.connected_devices() and opener.id in other.connected_devices(),
-            5,
+            15,
             "chưa nối được kết nối điều khiển qua proxy",
         )
         src = make_file(net.src, name, size)
