@@ -218,7 +218,7 @@ git clone git@github.com:Nha-Cong-Dong/zero-cloud-lan-teleport.git
 cd zero-cloud-lan-teleport
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,gui]"
 ```
 
 Nếu PowerShell chặn `Activate.ps1`, chạy `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` một lần.
@@ -281,7 +281,7 @@ src/teleport/
   cli.py  __main__.py        # lệnh `teleport`
   paths.py  lock.py  atomic.py  # thư mục cấu hình, khóa file, ghi file nguyên tử
 tests/                       # chia theo tầng: core/, trust/, net/, app/, ui/ + test phân tầng;
-                             #   packaging/: test đóng gói (giấy phép, test khói bản build)
+                             #   packaging/: test đóng gói và phát hành
 docs/                      # toàn bộ tài liệu
 ```
 

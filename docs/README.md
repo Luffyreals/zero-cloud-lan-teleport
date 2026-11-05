@@ -1,6 +1,6 @@
 # Tài liệu
 
-Mọi tài liệu của dự án nằm trong thư mục này (trừ `.claude/CLAUDE.md`, hướng dẫn cho Claude Code, viết tiếng Anh). Giới thiệu dự án và cách cài môi trường phát triển: [README.md](../README.md) ở gốc repo.
+Mọi tài liệu của dự án nằm trong thư mục này (trừ `.claude/CLAUDE.md`, hướng dẫn cho Claude Code, viết tiếng Anh). Giới thiệu dự án: [README.md](../README.md) ở gốc repo. Cách cài môi trường phát triển: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 1. Bản đồ tài liệu
 
@@ -48,7 +48,7 @@ Mọi tài liệu của dự án nằm trong thư mục này (trừ `.claude/CLA
 | **Bitfield** | Bảng bit đánh dấu khối đã nhận, **đã khớp hash, đã ghi bền xuống đĩa và đã được đánh dấu bền trong `.state`**. |
 | **Merkle root** | Hash đại diện cho cả file, tính từ hash các khối. |
 | **File tạm** | `.part` (dữ liệu đang nhận), `.state` (trạng thái nối lại của một file) và `transfer.json` (trạng thái mức lượt truyền), nằm trong `<thư mục nhận>/.teleport/<transfer_id>/`. |
-| **Nhật ký `.state`** | Trạng thái nối lại của một file, chỉ ghi thêm: mỗi **lần đánh dấu** (16 khối) nối một bản ghi các khối vừa ghi bền kèm hash. Định dạng: [architecture.md](architecture.md) mục 4. |
+| **Nhật ký `.state`** | Trạng thái nối lại của một file, chỉ ghi thêm: mỗi **lần đánh dấu** (chu kỳ: [protocol.md](protocol.md) mục 4.3) nối một bản ghi các khối vừa ghi bền kèm hash. Định dạng: [architecture.md](architecture.md) mục 4. |
 | **Máy đang ẩn / đang hiện** | Công tắc “Cho máy chưa ghép đôi thấy máy này” đang tắt / đang bật ([mvp.md](mvp.md) F10). |
 | **Chế độ chờ ghép đôi** | Màn hình “Chờ ghép đôi” đang mở, hoặc đang chạy `teleport listen` ([mvp.md](mvp.md) F3). |
 | **Kết nối ghép đôi / điều khiển / dữ liệu** | Ba loại kết nối trên cùng một cổng (`protocol.md` mục 2). |
