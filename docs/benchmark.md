@@ -20,7 +20,7 @@
 |---|---|---|
 | mvp N1 | 2026-11-05: hai máy Windows thật (11 ↔ 10) qua Wi-Fi 2,4 GHz, cùng điểm phát (mục 3.6); trước đó 2026-10-23: host Windows 11 + máy ảo Ubuntu bridged (mục 3.3) | **ĐẠT trên hai máy thật qua Wi-Fi** cho phần xuất hiện, thoát app và mất mạng đột ngột (tắt Wi-Fi, app bị giết); máy **ngủ** thật, mạng dây và kịch bản mất gói ở hai lần resolve đầu chưa đo (mục 3.4) |
 | mvp N2 | 2026-10-29/30: đo tay qua giao diện, hai máy Windows thật qua Wi-Fi 2,4 GHz, một file 1,89 GiB (mục 5.4) | **CHƯA ĐỦ DỮ LIỆU**: lần đo tay cho tỉ số khoảng 0,96 nhưng không theo phương pháp mục 5.1 (1 lần Teleport, 2 lần SMB, một cỡ file, bấm giờ tay); lượt đo theo mục 5.1 và mạng dây chưa đo (mục 5.3) |
-| mvp N3 | 2026-10-26: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, loopback, 1 / 5 / 10 GiB (mục 4.6); lúc rảnh của `receive` 10 phút (mục 4.7); ổ đích USB dừng ở bước kiểm ổ (mục 4.8). 2026-10-28: trước/sau thay đổi ghi trạng thái nối lại bền, 1 GiB và 1000 file nhỏ (mục 4.9) | **CHƯA ĐỦ DỮ LIỆU**: phần truyền qua loopback ĐẠT cả ba tiêu chí mục 4.1 với 1, 5 và 10 GiB; lúc rảnh của CLI chỉ ghi nhận; ổ đích chậm (USB có sẵn là FAT32, mục 4.8), 10 GiB qua card mạng giữa hai máy, lúc rảnh của app có giao diện chưa đo (mục 4.4). Sau thay đổi ghi trạng thái nối lại bền (mục 4.9), tiêu chí 1 và 2a vẫn ĐẠT với 1 GiB và 1000 file nhỏ |
+| mvp N3 | 2026-11-05: 10 GiB qua Wi-Fi 2,4 GHz giữa hai máy Windows thật, RAM hai phía, 1 lần (mục 4.10). 2026-10-26: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, loopback, 1 / 5 / 10 GiB (mục 4.6); lúc rảnh của `receive` 10 phút (mục 4.7); ổ đích USB dừng ở bước kiểm ổ (mục 4.8). 2026-10-28: trước/sau thay đổi ghi trạng thái nối lại bền, 1 GiB và 1000 file nhỏ (mục 4.9) | **CHƯA ĐỦ DỮ LIỆU**: phần truyền qua loopback ĐẠT cả ba tiêu chí mục 4.1 với 1, 5 và 10 GiB; lúc rảnh của CLI chỉ ghi nhận; ổ đích chậm (USB có sẵn là FAT32, mục 4.8), 10 GiB qua card mạng giữa hai máy, lúc rảnh của app có giao diện chưa đo (mục 4.4). Sau thay đổi ghi trạng thái nối lại bền (mục 4.9), tiêu chí 1 và 2a vẫn ĐẠT với 1 GiB và 1000 file nhỏ. Qua Wi-Fi giữa hai máy thật (mục 4.10), RSS tăng 4,8 MiB bên gửi và 6,0 MiB bên nhận, Q4 − Q1 âm ở cả hai, nhưng mới 1 lần 10 GiB |
 | mvp N4 | 2026-10-31: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, qua proxy TCP trên loopback, file 1 GiB, cắt ở 85 % theo 6 kiểu (mục 7.3) | **CHƯA ĐỦ DỮ LIỆU**: trên loopback Windows phần gửi thừa mỗi gián đoạn lớn nhất 24,31 MiB, ĐẠT ở mọi lần (49/49); theo tiêu chí ở mục 7.1 thì **không đặt** `SO_RCVBUF`/`SO_SNDBUF` trên Windows. Linux (máy ảo), card mạng thật / Wi-Fi và macOS chưa đo (mục 7.4, D5) |
 | mvp N5 | — | chưa đo |
 | mvp N6 | 2026-11-02: hai `Node` thật trong một tiến trình trên một máy Windows 11, loopback, `FakeClipboard` (mục 9.3); backend Qt `read`/`write` ảnh thật, nền Qt offscreen, cùng máy (M4, mục 9.4) | **KHÔNG ĐẠT** ở ca ảnh 8192² dễ nén (cận dưới trên nền offscreen đã vượt ngưỡng ảnh, mục 9.4); các ca còn lại **CHƯA ĐỦ DỮ LIỆU** (D6): trên loopback văn bản 1 KB và 1 MiB, ảnh PNG 10 MiB đều dưới ngưỡng ở mọi lần, RAM phẳng sau 1000 clip; backend Qt nhanh với ảnh 1920×1080 và 3840×2160 nhưng ảnh 8192² dễ nén (PNG 3,53 MiB) đã tốn khoảng 4,3–5,0 s (p95 `read` + `write`, lượt r1 và r3), vượt ngưỡng ảnh, chủ yếu do mã hóa PNG; ảnh khó nén vượt trần nay bị loại sau dưới 0,75 s nhờ kiểm sơ bộ (trước: tới 24,3 s); Wi-Fi 5 giữa hai máy thật (D6) và clipboard thật của Windows chưa đo (mục 9.5) |
@@ -381,7 +381,7 @@ Lần chậm nhất của 64 MiB (18,2 MB/s, 3,70 s) là lần đo đầu tiên 
 
 - File 1 GiB, 5 GiB và 10 GiB qua CLI thật trên loopback: đã đo, ĐẠT (mục 4.6).
 - Ổ đích chậm mà RAM không tăng: **chưa đo**; USB có sẵn không dùng được (FAT32, mục 4.8). Cần một USB định dạng NTFS hoặc exFAT, còn ≥ 8 GB trống (định dạng lại USB hiện có thì xóa dữ liệu trên đó: người dùng quyết), hoặc ổ ảo giới hạn tốc độ trong máy ảo. Script đã có `--recv-dir` (mục 4.5). Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D4).
-- 10 GiB từ host sang máy thật thứ hai (Windows, Wi-Fi) qua card mạng, RAM hai phía: **chưa đo**; định nghĩa ở mục 4.1 (“Qua card mạng giữa hai máy”), script và hướng dẫn đã có (mục 4.5), cần người dùng chạy trên máy thứ hai. Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D3).
+- 10 GiB từ host sang máy thật thứ hai (Windows, Wi-Fi) qua card mạng, RAM hai phía ([ke_hoach.md](ke_hoach.md) mục 5.4, D3): đã đo **1 lần** qua Wi-Fi 2,4 GHz (mục 4.10), tiêu chí 1 và 2 (phần Q4 − Q1) đúng ở cả hai phía. Còn **chưa đo**: thêm lần 10 GiB cho đủ số lần, mạng dây, và phần so 10 GiB với 1 GiB của tiêu chí 2 (cần các lần 1 GiB qua cùng mạng, lượt mvp N2 mục 5.1).
 - Phần lúc rảnh của mvp N3: lệnh CLI đã ghi nhận (mục 4.7); app có giao diện **chưa đo** (Giai đoạn 4). Đo CPU cần tránh bẫy lõi tiết kiệm điện của Windows (EcoQoS).
 - Hệ điều hành khác (Linux, macOS làm bên nhận và bên gửi), Python 3.12: **chưa đo**. Hệ điều hành khác thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D7); Python 3.12 đo được trên máy này, không thuộc đợt đo.
 
@@ -652,6 +652,64 @@ $env:PYTHONPATH = "<worktree trước>\src"   # chỉ để điều phối tạo
 & $PY d1_report.py results\d1-<giờ UTC>\results.jsonl ; & $PY d1_pairs.py results\d1-<giờ UTC>\results.jsonl
 $env:D1_PROFILE = "1"; & $PY d1_ab.py ... --big-runs 1 --small-runs 3 --warmup --diag ; & $PY d1_diag.py results\d1-<giờ UTC>
 ```
+
+### 4.10. Lần đo 2026-11-05: 10 GiB qua Wi-Fi giữa hai máy Windows thật (D3)
+
+Phép đo “Qua card mạng giữa hai máy” ở mục 4.1, script ở mục 4.5 (`n3_net_host.py` trên máy gửi, `may2_nhan.py` trên máy nhận). Chiều máy A → máy B. Người dùng chạy theo hướng dẫn từng bước; trong lúc đo không dùng hai máy.
+
+**Mã đo.** Commit `40da800` (`main`), cây `src` `89d3f8226770d4e05f3f327f5dc8fcf47077346c`, giống `src` của zip RC1 `7824259` dùng ở mục 6.1.
+- Máy A nạp `src` lấy bằng `git archive 40da800 src` qua `PYTHONPATH` (script ghi `teleport.__file__`), với `python.exe` của `.venv` ở checkout chính.
+- Máy B dùng bản clone mới ở `40da800` (`git rev-parse HEAD:src` khớp, script ghi commit, `src_dirty` rỗng), cài `pip install -e .` vào `.venv` riêng.
+- Hai node chạy `teleport send` / `teleport receive` thật với danh tính đo riêng (`TELEPORT_HOME`), ghép đôi bằng `teleport pair` ngay trước khi đo.
+
+**Môi trường.**
+
+| | Máy A (gửi) | Máy B (nhận) |
+|---|---|---|
+| Hệ điều hành | Windows 11 Pro 10.0.26300 | Windows 10 Enterprise LTSC 2021, 21H2 (19044.7807) |
+| CPU, RAM | i7-12800H (20 luồng), 15,7 GiB | i3-1005G1 (4 luồng), 11,7 GiB |
+| Ổ đĩa | SSD NVMe 512 GB (file nguồn) | SSD NVMe 256 GB, NTFS (thư mục nhận, còn 26,8 GiB trống lúc đầu) |
+| Python, cryptography, zeroconf | 3.14.5, 50.0.2, 0.151.5 | 3.15.1, 50.0.2, 0.151.6 |
+| Wi-Fi | Intel AX201, 802.11ax, 2,4 GHz kênh 9, liên kết rx 172 / tx 88 Mbps, sóng 68 % (lúc kết thúc) | Intel AX201, liên kết 163 Mbps (lúc bắt đầu) |
+| Nguồn | cắm sạc, pin 100 %; lớp nguồn khi cắm sạc `961cc777-…` (không phải “Hiệu suất tốt nhất”) | cắm sạc, pin 100 %; lớp nguồn `ded574b5-…` (Hiệu suất tốt nhất) |
+
+Cùng một điểm phát, hồ sơ mạng Private ở cả hai máy. Máy B mở tạm cổng 47474 (chỉ cho IP máy A) và một share SMB chỉ để chuyển file “sẵn sàng” và kết quả, không dùng để truyền.
+
+**Lượt đo.** Máy A `results/net-20261105T033554Z`, máy B `may2-20261105T033538Z`. File nguồn 10 GiB (10 737 418 240 byte) ngẫu nhiên, SHA-256 `35085990262e67368c998ed2129b7223e932ac46c82174329c7794818e95073d`. Trước đó có một lần chạy thử 64 MiB (`net-20261105T033355Z`), không tính.
+
+| Đại lượng | Máy A (`send`) | Máy B (`receive`) |
+|---|---|---|
+| Kết quả, mã thoát | `done`, 0 | `done`, 0 (dừng sau 0,33 s) |
+| Working set lúc bắt đầu | 54,1 MiB | 51,9 MiB |
+| RSS tăng (cận trên) | **4,8 MiB** | **6,0 MiB** |
+| RSS tăng (lấy mẫu) | 4,8 MiB | 5,7 MiB |
+| Private bytes tăng (cận trên) | 4,2 MiB | 5,8 MiB |
+| Đỉnh rơi vào lúc truyền | có | có |
+| Max RSS Q1 / Q2 / Q3 / Q4 | 59,0 / 57,5 / 57,5 / 57,7 MiB | 57,6 / 56,4 / 56,4 / 56,7 MiB |
+| Q4 − Q1 | −1,3 MiB | −0,9 MiB |
+| Số mẫu, khoảng cách mẫu trung vị / lớn nhất | 208 615, 10,3 / 26,3 ms | 212 618, 10,2 / 39,3 ms |
+| Thời gian truyền (dòng `offer` → `result`) | 2180,7 s | 2180,7 s |
+| CPU trong lúc truyền | 59,4 s | 64,7 s |
+
+Thông lượng 4,92 MB/s (10⁶ byte, chỉ tham khảo; không phải mvp N2). SHA-256 của file nhận (băm sau khi nhận, 13,0 s) khớp file nguồn. Không có lần thử lại, không có lỗi đo.
+
+**So với tiêu chí ở mục 4.1** (viết trước khi đo):
+
+| Tiêu chí | Kết quả |
+|---|---|
+| 1. RSS tăng (cận trên) dưới ngưỡng của mvp N3 (MB = 10⁶ byte) | Đúng ở cả hai phía: 4,8 MiB và 6,0 MiB |
+| 2. Q4 − Q1 ≤ 4 MiB | Đúng ở cả hai phía: −1,3 MiB và −0,9 MiB |
+| 2. Trung vị 10 GiB − trung vị 1 GiB ≤ dao động của các lần 1 GiB | Chưa xét: chưa có lần 1 GiB qua cùng mạng |
+| 3. SHA-256 khớp, `send` / `receive` thoát mã 0 | Đúng |
+| 3. `.teleport` không còn file sau khi bên nhận thoát | **Sai theo câu chữ**: còn `transfer.json` của lượt 10 GiB và của lần chạy thử 64 MiB. Đây là hành vi thiết kế từ sau khi tiêu chí được viết: lượt đã xong giữ bản ghi tới hết thời hạn nhớ lượt đã kết thúc ([architecture.md](architecture.md) mục 4, `remove_temp(keep_record)`; [protocol.md](protocol.md) mục 6.3). Không còn `.part`, `.state` hay file tạm nào. Tiêu chí giữ nguyên, không sửa sau khi đo |
+
+**Kết luận:** **CHƯA ĐỦ DỮ LIỆU**. Lần 10 GiB duy nhất qua Wi-Fi cho RAM tăng dưới ngưỡng mvp N3 nhiều lần và đường RAM phẳng ở cả hai phía. Nhưng mới có 1 lần (hướng dẫn ở mục 4.5 định 3 lần), chưa có phần so với 1 GiB, và tiêu chí 3 về `.teleport` trống đã cũ so với thiết kế giữ `transfer.json`.
+
+**Giới hạn:**
+- Chỉ Wi-Fi 2,4 GHz; mỗi byte qua sóng hai lần nên tốc độ thấp (khoảng 4,9 MB/s). Mạng dây chưa đo.
+- Máy A không ở chế độ “Hiệu suất tốt nhất”. Việc này có thể làm chậm phía gửi, nhưng không làm RAM tăng thêm.
+- Máy B chạy Windows 10 21H2, không phải phiên bản mvp N10 nêu.
+- ke_hoach mục 5.4 định đo D3 cùng lượt D2 (mvp N2); lượt N2 chưa chạy.
 
 ## 5. mvp N2: Hiệu năng so với SMB
 
