@@ -198,7 +198,7 @@ Phát hiện lỗ hổng? Xem [docs/SECURITY.md](docs/SECURITY.md).
 | — | ✅ Nền tảng: khung dự án, CI 3 hệ điều hành, danh tính thiết bị, TLS 1.3 + mTLS |
 | — | ✅ Khám phá thiết bị & ghép đôi: mDNS, ghép đôi qua mạng, tự giữ kết nối, lệnh `teleport list` / `listen` / `pair` / `unpair`; đạt mvp N1 (máy ảo bridged; một phần trên hai máy Windows thật qua Wi-Fi, [docs/benchmark.md](docs/benchmark.md)) |
 | `v0.1.0-alpha` | ✅ Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi: lệnh `teleport send` / `receive`. Bản phát hành này gồm mọi thứ đã có tới lúc gắn tag, cả giao diện Windows ([docs/CHANGELOG.md](docs/CHANGELOG.md)) |
-| `v0.2.0-alpha` | ⏳ Tự nối lại cả sau khi rớt mạng lâu, tắt app nhận hay khởi động lại máy nhận; chỉ gửi phần còn thiếu |
+| `v0.2.0-alpha` | ⏸ Tự nối lại cả sau khi rớt mạng lâu, tắt app nhận hay khởi động lại máy nhận; chỉ gửi phần còn thiếu (code xong; còn đo trên thiết bị thật, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v0.3.0-beta` | ⏳ Giao diện (cuộc trò chuyện theo từng máy, radar tìm máy mới), khay hệ thống, Tiếng Việt / English (phần lớn đã có trong `v0.1.0-alpha`; còn việc tồn đọng, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v0.4.0-beta` | ⏳ Đồng bộ clipboard (code xong; còn việc tồn đọng, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v1.0.0` | Bộ cài cho Windows, macOS, Linux; tài liệu người dùng |
