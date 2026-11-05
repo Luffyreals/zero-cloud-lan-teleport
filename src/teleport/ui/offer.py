@@ -19,7 +19,7 @@ gọi đều ở luồng Qt nên hai cú bấm gần như cùng lúc (hộp và 
 tự và lần đầu thắng. Lý do phải chặn ở đây: engine vẫn từ chối ngay `decide(False)` tới sau
 `decide(True)` khi đang kiểm lại chỗ trống (`core/transfer.py`). Entry ANSWERED chỉ gỡ khi có
 `TransferFinished`; trần an toàn `OFFER_BOOK_MAX` entry, vượt thì gỡ entry ANSWERED cũ nhất (không
-bao giờ gỡ PENDING; số PENDING bị chặn bởi số máy đã ghép đôi, protocol §3.3, §4.1).
+bao giờ gỡ PENDING; số PENDING bị chặn bởi số máy đã ghép đôi, protocol §3.4).
 
 **`OfferPrompts`**: hộp hỏi nhận file, mỗi `TransferKey` một `QDialog` không cha, `NonModal`,
 `WA_DeleteOnClose`, mở bằng `show()` + `raise_()` + `activateWindow()` (không `exec()`). Việc mở do

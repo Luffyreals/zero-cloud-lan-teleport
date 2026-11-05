@@ -44,7 +44,7 @@ thiết bị. `pair <tên>` duyệt mDNS (không quảng bá, không tự kết 
 máy; `pair <ip>` không dùng mDNS. mDNS bật khi nghe trên mọi địa chỉ (mặc định), hoặc
 khi có cờ ẩn `--mdns-interface` (test).
 
-`listen`, `pair`, `send` và `receive` chạy một node trong tiến trình này (architecture mục 2); `listen`,
+`listen`, `pair`, `send` và `receive` chạy một node trong tiến trình này (tới v0.3); `listen`,
 `pair` và `receive` (không `--yes`) hỏi người dùng qua stdin. stdin được đọc bằng `os.read`
 trong một thread daemon, không dùng `input()`: thread bị chặn trong bộ đệm của `sys.stdin` có
 thể làm Python báo “Fatal Python error” lúc thoát. Mỗi dòng mang mốc `time.perf_counter()` lúc
