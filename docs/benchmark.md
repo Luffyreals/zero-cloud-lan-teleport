@@ -30,7 +30,7 @@
 | mvp N10 | — | chưa đo |
 | mvp N11 | 2026-10-31: bộ cài Inno Setup thử (PR E2), cài/gỡ silent `/CURRENTUSER` 3 lần trên máy dev Windows 11 (mục 8.4); trước đó cỡ zip GUI trước/sau A2 (mục 8.2) | **CHƯA ĐỦ DỮ LIỆU**: cỡ bộ cài dưới trần theo cả hai cách hiểu “MB”, không cần khởi động lại và gỡ sạch thư mục cài, khóa gỡ cài đặt, lối tắt ở chế độ một người dùng; chế độ quản trị (rule tường lửa) và máy ảo sạch chưa đo (mục 8.3) |
 | mvp N12 | — | chưa đo |
-| mvp mục 4.1 (H1–H5) | — | chưa đo (mục 6) |
+| mvp mục 4.1 (H1–H5) | 2026-11-05: zip RC1 `7824259`, hai máy Windows thật qua Wi-Fi 2,4 GHz (mục 6.1) | **ĐẠT** cả năm tiêu chí (mục 6) |
 
 ## 3. mvp N1: Khám phá
 
@@ -729,13 +729,54 @@ Tiêu chí H1–H5, cách kiểm và điều kiện đạt (máy, mạng, bản 
 
 | Mã | Lần kiểm gần nhất | Kết luận |
 |---|---|---|
-| H1 | — | chưa đo |
-| H2 | — | chưa đo |
-| H3 | — | chưa đo |
-| H4 | — | chưa đo |
-| H5 | — | chưa đo |
+| H1 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: B hiện trên radar A sau 1,74–2,11 s (bấm tay, 3 lần); ghép đôi xong, mã 6 số trùng ở hai máy |
+| H2 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: 1 GiB qua kéo thả, hộp thoại Nhận ở B, SHA-256 trùng |
+| H3 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: tắt Wi-Fi máy B hai lần (50,7 % và 89,8 %), tự chạy tiếp, không về 0, SHA-256 trùng |
+| H4 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: thoát app B ở khoảng 41 %, mở lại sau khoảng 20 s, tự chạy tiếp không hỏi Nhận lại, SHA-256 trùng |
+| H5 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: bản mới lưu thành `demo-1GiB (1).bin`, file cũ không đổi; B sau khi A hủy ghép đôi bị từ chối, A không có hộp thoại và không có file mới |
 
 Lần đo tay N2 ở mục 5.4 không tính cho H2: không so SHA-256 của file ở hai máy.
+
+### 6.1. Lần kiểm 2026-11-05: zip RC1 `7824259`, hai máy Windows thật qua Wi-Fi
+
+Kiểm trước lịch chính thức ngày 06/11 ở [ke_hoach.md](ke_hoach.md) mục 5.5 vì có máy mượn sớm hơn. Lần kiểm này đủ điều kiện của mvp mục 4.1: zip RC1, hai máy Windows thật, cùng một mạng Wi-Fi, chỉ gõ lệnh kiểm hash. Người dùng thao tác và bấm giờ; số liệu dưới đây là số người dùng báo lại.
+
+**Bản chạy.** Cả hai máy chạy zip `teleport-gui-0.1.0a0-7824259-windows` (34 384 865 byte). Zip được build bằng workflow “Build GUI (thử)” (run 41953253539) trên `main` `7824259`; build và test frozen đều đạt. Zip `40da800` có `src/` giống hệt `7824259`, và `main` không đổi `src/` từ `7824259` tới `40da800`.
+
+**Môi trường.**
+
+| | Máy A (gửi, “Tung”) | Máy B (nhận, “DESKTOP-D3TLUTA”) |
+|---|---|---|
+| Hệ điều hành | Windows 11 Pro 10.0.26300 (Insider) | Windows 10 Enterprise LTSC 10.0.19044 (21H2) |
+| CPU, RAM | i7-12800H, 15,7 GiB | i3-1005G1, 11,7 GiB |
+| Card Wi-Fi | Intel AX201, 802.11ax | Intel AX201, 802.11ax |
+| Mạng | 2,4 GHz kênh 9, cùng điểm phát, hồ sơ Private | như máy A |
+| IP | 192.168.1.7 | 192.168.1.16 |
+| Ngôn ngữ giao diện | Tiếng Việt | Tiếng Anh (theo ngôn ngữ Windows của B) |
+
+File thử là `demo-1GiB.bin` trên máy A: 1 073 741 824 byte ngẫu nhiên, SHA-256 `BC26062F5AA02CF7B5B46312317ECCA6D4160ACC1CF3DE4FF0FD9A091E201FC3`. Thư mục nhận của B là `Downloads\Teleport`, của A là `Downloads`.
+
+**Kết quả từng bước.**
+
+| Mã | Thao tác và kết quả | Kết luận |
+|---|---|---|
+| H1 | Hai máy chưa ghép đôi. Bấm tay từ lúc mở `Teleport.exe` trên B tới lúc B hiện trên radar A, 3 lần: 2,11 / 1,74 / 2,02 s. Các số này là cận trên vì có cả thời gian phản xạ của người bấm, và đều dưới ngưỡng xuất hiện của mvp N1. Ghép đôi từ radar A: mã 6 số trùng ở hai máy, xác nhận ở cả hai | ĐẠT |
+| H2 | A kéo thả `demo-1GiB.bin` vào cuộc trò chuyện của B. B hiện hộp thoại và bấm Nhận. Từ lúc bấm Nhận tới lúc xong mất 4 phút 29 s (bấm tay, khoảng 3,99 MB/s; giao diện hiện khoảng 4,2 MB/s lúc 64 %). SHA-256 của `demo-1GiB.bin` ở B trùng file gốc | ĐẠT |
+| H3 | A gửi lại file, B lưu thành `demo-1GiB (1).bin`. Tắt Wi-Fi máy B ở 50,7 % và bật lại sau khoảng 13 s; tắt lần nữa ở 89,8 % và bật lại sau khoảng 20 s. Thời gian tắt do người dùng ước lượng, không bấm giờ, nhưng cả hai lần đều ≥ 10 s. Cả hai lần lượt truyền đều tự chạy tiếp, tiến độ không về 0. SHA-256 trùng file gốc | ĐẠT |
+| H4 | A gửi lại file, B lưu thành `demo-1GiB (2).bin`. Thoát app B (khay → Thoát) ở khoảng 41 %. A hiện “Đang nối lại… · 41,9 % · Đang chờ DESKTOP-D3TLUTA nối lại…” và dải “đang ngoại tuyến”. Mở lại B sau khoảng 20 s: lượt truyền tự chạy tiếp từ 45,4 %, không hỏi Nhận lại, rồi hoàn tất. SHA-256 trùng file gốc | ĐẠT |
+| H5 | Sau khi xóa các bản `(1)` và `(2)`, A gửi lại file: B lưu thành `demo-1GiB (1).bin`, và SHA-256 của `demo-1GiB.bin` cũ vẫn trùng file gốc. A hủy ghép đôi B, B giữ nguyên rồi gửi `thu-h5.txt` tới A. B hiện “Tung refused the connection from this device. That device may have unpaired.” kèm nút “Pair again” (câu tiếng Anh của dòng “Máy kia từ chối máy này”, mvp mục 8). A không hiện hộp thoại nhận; `Test-Path` của `thu-h5.txt` trong thư mục nhận của A trả `False`. B hủy ghép đôi nốt, cả hai về chưa ghép đôi | ĐẠT |
+
+**Kết luận:** H1–H5 **ĐẠT** trên zip `7824259`.
+
+**Ghi nhận** (không chặn tiêu chí nào):
+- Ở H3, khi mất Wi-Fi ngắn, thẻ trên máy A chỉ hiện “50,7 % · đang tính thời gian còn lại” rồi “89,8 % · Đang chờ DESKTOP-D3TLUTA phản hồi…”, không hiện “Đang nối lại…”. Chữ “Đang nối lại…” chỉ thấy ở H4, khi app B đã thoát.
+- Sau khi mở lại app B ở H4, hai thẻ cũ (H2, H3) trong lịch sử của B chỉ còn “Saved”, mất dòng “Saved as demo-1GiB (1).bin” và “Integrity verified” vốn hiện trước khi thoát app. Chưa tìm hiểu nguyên nhân.
+
+**Giới hạn:**
+- Thời gian ở H1, H2 và độ dài lúc tắt Wi-Fi ở H3, H4 đều bấm tay hoặc do người dùng ước lượng.
+- Chỉ đo trên Wi-Fi 2,4 GHz; mỗi tiêu chí kiểm một lần, riêng H1 bấm giờ 3 lần.
+- Máy B chạy Windows 10 21H2, không phải phiên bản mvp N10 nêu.
+- Nếu zip chốt ngày 07/11 khác commit `7824259`, phải kiểm lại các H mà thay đổi có thể ảnh hưởng ([ke_hoach.md](ke_hoach.md) mục 5.5).
 
 ## 7. mvp N4: Nối lại
 
