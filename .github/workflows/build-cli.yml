@@ -1,10 +1,22 @@
 # Build thử bản CLI Teleport cho Windows bằng PyInstaller (--onedir) rồi chạy test khói trên exe.
-# Chỉ chạy tay (workflow_dispatch); không gắn tag, không tạo Release, không dùng secret, không ký mã.
-# Kết quả là artifact tạm (giữ 14 ngày), không phải bản phát hành.
+# Chạy tay (workflow_dispatch), hoặc được release.yml gọi lại (workflow_call) để build bản phát hành
+# bằng đúng các bước này. Workflow này không gắn tag, không tạo Release, không dùng secret, không ký mã.
+# Kết quả là artifact tạm (giữ 14 ngày); release.yml đóng zip phát hành từ artifact đó.
 name: Build CLI (thử)
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        # Tag phát hành (ví dụ v0.1.0-alpha), đặt vào TELEPORT_RELEASE_TAG khi build để SOURCE.txt chỉ tới
+        # sdist của thư viện LGPL đính kèm trang Release (third_party.py). Rỗng: bản build thử.
+        type: string
+        default: ""
+    outputs:
+      artifact:
+        description: Tên artifact chứa thư mục dist/teleport
+        value: ${{ jobs.build-windows.outputs.artifact }}
 
 permissions:
   contents: read
@@ -14,6 +26,8 @@ jobs:
     name: windows-latest / Python 3.12.10
     runs-on: windows-latest
     timeout-minutes: 30
+    outputs:
+      artifact: teleport-cli-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha7 }}-windows
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +49,7 @@ jobs:
       - name: Build bằng PyInstaller
         env:
           PYTHONUTF8: "1"
+          TELEPORT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: pyinstaller --noconfirm --clean --distpath dist --workpath build packaging/pyinstaller/teleport-cli.spec
       - name: Lấy phiên bản và commit
         id: meta
@@ -52,4 +67,5 @@ jobs:
           name: teleport-cli-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha7 }}-windows
           path: dist/teleport/
           retention-days: 14
+          overwrite: true  # "Re-run failed jobs" không vấp tên artifact đã có
           if-no-files-found: error

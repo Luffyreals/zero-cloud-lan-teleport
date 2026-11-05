@@ -11,14 +11,19 @@ của trình thông dịch dùng để build, cộng văn bản chép sẵn tron
 trong CPython và thư viện C của bản Windows mà `LICENSE.txt` không có (`CPYTHON_LICENSE_TEXTS`,
 `PYTHON_EMBEDDED`, theo đúng phiên bản Python). Gói có SBOM CycloneDX trong `.dist-info/sboms/`
 (PEP 770, ví dụ `cryptography` liên kết tĩnh OpenSSL và các crate Rust) thì liệt kê và kiểm cả thành
-phần trong SBOM. Qt/PySide6 (bản GUI) không có SBOM trong wheel: thành phần lồng trong DLL Qt lấy
-từ bảng `QT_EMBEDDED` (rà theo qt_attribution.json đúng phiên bản Qt), văn bản chép sẵn trong
-`licenses/qt-<phiên bản>/`.
+phần trong SBOM; thành phần SBOM có giấy phép đòi giữ dòng bản quyền mà văn bản Apache-2.0 của gói
+không thay được (ví dụ crate chỉ theo MIT như `openssl-sys`, `pem`) phải có văn bản chép sẵn đúng phiên
+bản (`SBOM_NOTICE_TEXTS`, thư mục `licenses/<gói>-<phiên bản>/`). Qt/PySide6 (bản GUI) không có SBOM
+trong wheel: thành phần lồng trong DLL Qt lấy từ bảng `QT_EMBEDDED` (rà theo qt_attribution.json
+đúng phiên bản Qt), văn bản chép sẵn trong `licenses/qt-<phiên bản>/`.
 
 Tài sản không phải mã (icon SVG, font) nằm trong `src/teleport/ui/assets/` không thuộc gói Python nào
 của bên thứ ba: chúng là thành phần riêng `asset:<key>` theo bảng `SOURCE_ASSETS` (nguồn, commit ghim,
 giấy phép, file giấy phép đi kèm), kiểm theo `ASSET_LICENSES` chứ không theo `APPROVED`, và được xếp
 loại trước khi tra RECORD hay mã của dự án. File trong `assets/` không khớp mục nào làm build dừng.
+
+Bản phát hành (workflow `release.yml` đặt biến `TELEPORT_RELEASE_TAG`): `SOURCE.txt` chỉ tới sdist của
+thư viện LGPL (`LGPL_SDISTS`) đính kèm trang GitHub Release của tag; bản build thử chỉ ghi link PyPI.
 
 Luật (ke_hoach mục 1, Giấy phép): mọi thứ đóng vào phải tương thích GPLv3. Gói nằm ngoài
 `APPROVED`, gói có giấy phép trong metadata khác chuỗi đã duyệt, file không biết thuộc gói nào,
@@ -187,6 +192,113 @@ SBOM_KNOWN_LICENSES: dict[str, tuple[int, str, str]] = {
     # OpenSSL đổi sang Apache-2.0 từ bản 3.0.0.
     "openssl": (3, "Apache-2.0", "https://openssl-library.org/source/license/"),
 }
+
+# Thành phần SBOM mà biểu thức giấy phép thỏa được chỉ bằng các định danh dưới đây thì dùng theo nhánh
+# đó, văn bản là file giấy phép Apache-2.0 trong dist-info của chính gói chứa nó (`build_notices` kiểm
+# văn bản đó có mặt). Đã xem 05/11 cho cryptography 50.0.2: không crate nào trong SBOM có file NOTICE.
+SBOM_OWNER_TEXT_LICENSES: frozenset[str] = frozenset({"Apache-2.0", "Apache-2.0 WITH LLVM-exception"})
+_APACHE_TEXT = re.compile(r"Apache License\s+Version 2\.0")
+
+# Thành phần SBOM còn lại (giấy phép đòi kèm thông báo bản quyền mà gói không có văn bản: MIT, BSD-3-Clause,
+# Unicode-3.0, ...): văn bản nguyên văn của ĐÚNG phiên bản, chép sẵn trong licenses/<gói>-<phiên bản>/.
+# Khóa: (gói đã chuẩn hóa, tên thành phần trong SBOM chữ thường, phiên bản) -> các (file trong licenses/,
+# nguồn đã chép). Thiếu khóa thì build dừng (`sbom_notice_texts`): nâng gói thì lấy văn bản của bản mới
+# cùng nguồn rồi sửa bảng. Nguồn: file .crate chính thức trên crates.io, SHA-256 khớp hash trong SBOM.
+_CRATE = "https://static.crates.io/crates/{0}/{0}-{1}.crate (file {2}; SHA-256 của .crate khớp SBOM)"
+SBOM_NOTICE_TEXTS: dict[tuple[str, str, str], tuple[tuple[str, str], ...]] = {
+    ("cryptography", "asn1", "0.24.1"): (
+        ("cryptography-50.0.2/asn1-0.24.1-LICENSE.txt", _CRATE.format("asn1", "0.24.1", "LICENSE")),
+    ),
+    ("cryptography", "asn1_derive", "0.24.1"): (
+        (
+            "cryptography-50.0.2/asn1_derive-0.24.1-LICENSE.txt",
+            _CRATE.format("asn1_derive", "0.24.1", "LICENSE"),
+        ),
+    ),
+    ("cryptography", "openssl-sys", "0.9.117"): (
+        (
+            "cryptography-50.0.2/openssl-sys-0.9.117-LICENSE-MIT.txt",
+            _CRATE.format("openssl-sys", "0.9.117", "LICENSE-MIT"),
+        ),
+    ),
+    ("cryptography", "pem", "4.0.0"): (
+        ("cryptography-50.0.2/pem-4.0.0-LICENSE.md", _CRATE.format("pem", "4.0.0", "LICENSE.md")),
+    ),
+    # (MIT OR Apache-2.0) AND Unicode-3.0: nhánh Apache-2.0 dùng văn bản của gói, vế Unicode-3.0 cần
+    # văn bản riêng.
+    ("cryptography", "unicode-ident", "1.0.24"): (
+        (
+            "cryptography-50.0.2/unicode-ident-1.0.24-LICENSE-UNICODE.txt",
+            _CRATE.format("unicode-ident", "1.0.24", "LICENSE-UNICODE"),
+        ),
+    ),
+}
+
+# Mã nguồn thư viện LGPL đóng vào, đính kèm trang GitHub Release của tag (LGPL-2.1 §6(d): bản nhị phân
+# phát từ một nơi thì cho chép mã nguồn từ cùng nơi đó). Tên bản phân phối -> (phiên bản, SHA-256 của
+# sdist trên PyPI). Phiên bản phải bằng bản ghim trong constraints.txt; `packaging/release/release.py`
+# tải sdist từ PyPI và kiểm hash này, `build_source` ghi link khi build cho bản phát hành.
+LGPL_SDISTS: dict[str, tuple[str, str]] = {
+    "zeroconf": ("0.151.5", "28c2ec9d772007eedf11b41a9c9fd3d5c684c17b00721ff8f1ee31b20ad286a1"),
+}
+# Biến môi trường workflow phát hành đặt khi build (tag, ví dụ v0.1.0-alpha). Không có thì là bản build thử.
+RELEASE_TAG_ENV = "TELEPORT_RELEASE_TAG"
+_RELEASE_TAG = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-alpha|-beta)?")
+
+
+def sdist_filename(dist_name: str, version: str) -> str:
+    """Tên file sdist trên PyPI (PEP 625: tên chuẩn hóa với "_")."""
+    return f"{re.sub(r'[-_.]+', '_', dist_name).lower()}-{version}.tar.gz"
+
+
+def sdist_url(dist_name: str, version: str) -> str:
+    """URL chính thức của sdist trên PyPI (files.pythonhosted.org, đường dẫn theo tên)."""
+    name = sdist_filename(dist_name, version)
+    return f"https://files.pythonhosted.org/packages/source/{name[0]}/{dist_name}/{name}"
+
+
+def release_tag() -> str | None:
+    """Tag phát hành từ `RELEASE_TAG_ENV`, None nếu không đặt; sai dạng thì `LicenseAuditError`."""
+    tag = os.environ.get(RELEASE_TAG_ENV, "").strip()
+    if not tag:
+        return None
+    if not _RELEASE_TAG.fullmatch(tag):
+        raise LicenseAuditError(f"{RELEASE_TAG_ENV}={tag!r} không phải tag phát hành (vX.Y.Z[-alpha|-beta])")
+    return tag
+
+
+def sbom_notice_texts(
+    key: str, entries: list[tuple[str, str, str, str]]
+) -> tuple[list[tuple[str, str, str, list[tuple[str, str]]]], bool]:
+    """Văn bản riêng cần in cho thành phần SBOM của gói `key`.
+
+    Trả (các (tên, phiên bản, giấy phép, [(file trong licenses/, nguồn)]) của thành phần cần văn bản
+    riêng, có thành phần nào dùng văn bản Apache-2.0 của gói không). Thành phần không thỏa được bằng
+    `SBOM_OWNER_TEXT_LICENSES` mà thiếu mục trong `SBOM_NOTICE_TEXTS`, hay thiếu file, thì
+    `LicenseAuditError`.
+    """
+    own: list[tuple[str, str, str, list[tuple[str, str]]]] = []
+    uses_owner_text = False
+    errors: list[str] = []
+    for name, version, expression, _source in entries:
+        if _spdx_in(expression, SBOM_OWNER_TEXT_LICENSES):
+            uses_owner_text = True
+            continue
+        texts = SBOM_NOTICE_TEXTS.get((key, name.lower(), version))
+        if texts is None:
+            errors.append(
+                f"{key} (SBOM): {name} {version} ({expression}) cần kèm văn bản giấy phép và dòng bản quyền"
+                " riêng; chép từ nguồn đúng phiên bản vào licenses/ rồi thêm vào SBOM_NOTICE_TEXTS"
+            )
+            continue
+        for file_name, _src in texts:
+            if not (LICENSES_DIR / file_name).is_file():
+                errors.append(f"{key} (SBOM): thiếu văn bản giấy phép {file_name} cho {name} {version}")
+        own.append((name, version, expression, list(texts)))
+    if errors:
+        raise LicenseAuditError("thành phần SBOM thiếu văn bản giấy phép:\n  " + "\n  ".join(errors))
+    return own, uses_owner_text
+
 
 # Văn bản giấy phép của phần mềm bên thứ ba nằm trong CPython mà LICENSE.txt của bản Windows không
 # có đủ. Chép nguyên văn vào packaging/pyinstaller/licenses/, theo ĐÚNG phiên bản Python dùng để build
@@ -1264,6 +1376,7 @@ def build_notices(
                 f"văn bản giấy phép của Python thiếu phần cho {name} "
                 f"({', '.join(python_files[prefix])}): {missing}"
             )
+    sbom_texts = {key: sbom_notice_texts(key, entries) for key, entries in sboms.items()}
     versions = _python_library_versions()
     lines = [
         f"Teleport {app_version} ({edition.label} cho Windows) - "
@@ -1290,6 +1403,17 @@ def build_notices(
             " (SBOM liệt kê cả crate chỉ dùng lúc biên dịch):"
         )
         lines.extend(f"      {name} {version}: {expression}" for name, version, expression, _ in entries)
+        own, uses_owner_text = sbom_texts[key]
+        if uses_owner_text:
+            lines.append(
+                "      Thành phần có giấy phép thỏa được bằng Apache-2.0 dùng theo nhánh đó (văn bản"
+                f" Apache-2.0 ở phần {components[key].name})."
+            )
+        if own:
+            names = ", ".join(f"{name} {version}" for name, version, _expr, _texts in own)
+            lines.append(
+                f"      Văn bản giấy phép và dòng bản quyền riêng ở phần {components[key].name}: {names}."
+            )
     if qt_files:
         lines.append(
             f"  - Thành phần bên thứ ba nằm trong Qt {QT_LICENSE_VERSION} (theo qt_attribution.json của"
@@ -1326,6 +1450,10 @@ def build_notices(
                 lines.append(f"Ghi chú: {name} {version} liên kết tĩnh, giấy phép {expression} ({source}).")
         override = PACKAGE_LICENSE_TEXTS.get(comp.key)
         if override is not None:
+            if comp.key in sbom_texts:
+                raise LicenseAuditError(
+                    f"{comp.name}: có SBOM nhưng văn bản giấy phép lấy từ PACKAGE_LICENSE_TEXTS"
+                )
             note, texts = override
             lines.append(note)
             for name, title, source in texts:
@@ -1335,8 +1463,25 @@ def build_notices(
         license_files = _license_files(dist)
         if not license_files:
             raise LicenseAuditError(f"{comp.name}: không có file giấy phép trong dist-info")
-        for lic in license_files:
-            lines += [_SEPARATOR, f"[{comp.name}] {lic.name}", "", lic.read_text(encoding="utf-8").rstrip()]
+        license_texts = [(path, path.read_text(encoding="utf-8")) for path in license_files]
+        for path, text in license_texts:
+            lines += [_SEPARATOR, f"[{comp.name}] {path.name}", "", text.rstrip()]
+        own, uses_owner_text = sbom_texts.get(comp.key, ([], False))
+        if uses_owner_text and not any(_APACHE_TEXT.search(text) for _lic, text in license_texts):
+            raise LicenseAuditError(
+                f"{comp.name}: SBOM có thành phần dùng theo Apache-2.0 nhưng dist-info không có văn bản"
+                " Apache-2.0"
+            )
+        for name, version, expression, notice_texts in own:
+            for file_name, source in notice_texts:
+                text = (LICENSES_DIR / file_name).read_text(encoding="utf-8")
+                lines += [
+                    _SEPARATOR,
+                    f"[{comp.name}] {name} {version}: {expression}, thành phần trong SBOM của gói",
+                    f"Nguồn: {source}",
+                    "",
+                    text.rstrip(),
+                ]
     if qt_files:
         lines += [
             "",
@@ -1374,6 +1519,7 @@ def build_source(
     repo_url = pyproject["project"]["urls"]["Repository"].rstrip("/")
     sha = os.environ.get("GITHUB_SHA") or _git(repo_dir, "rev-parse", "HEAD")
     dirty = bool(_git(repo_dir, "status", "--porcelain"))
+    tag = release_tag()
     lines = [
         f"Teleport {app_version} ({edition.label} cho Windows) - mã nguồn",
         "",
@@ -1382,6 +1528,8 @@ def build_source(
         f"Commit dùng để build: {sha}",
         f"Mã nguồn đúng bản build: {repo_url}/tree/{sha}",
     ]
+    if tag is not None:
+        lines.append(f"Bản phát hành: {tag} ({repo_url}/releases/tag/{tag})")
     if dirty:
         lines.append(
             "CẢNH BÁO: bản build này dựng từ cây làm việc có thay đổi chưa commit, "
@@ -1396,8 +1544,23 @@ def build_source(
             "mục đó bằng bản zeroconf đã sửa đổi có cùng API để chạy với Teleport. Các module .pyd (Cython)",
             "phụ thuộc lẫn nhau nên thay cả bộ: hoặc .pyd build cho đúng phiên bản Python ghi ở cuối file",
             "này, hoặc xóa mọi .pyd và đặt file .py tương ứng (zeroconf chạy được ở dạng Python thuần).",
-            "Mã nguồn zeroconf: " + " ; ".join(_project_urls(md.distribution("zeroconf"))),
         ]
+        if tag is not None:
+            pinned = LGPL_SDISTS.get("zeroconf")
+            if pinned is None or pinned[0] != zeroconf.version:
+                raise LicenseAuditError(
+                    f"zeroconf {zeroconf.version} đóng vào khác bản sdist ghim trong LGPL_SDISTS"
+                    f" ({pinned!r}); sửa LGPL_SDISTS cùng constraints.txt"
+                )
+            sdist = sdist_filename("zeroconf", zeroconf.version)
+            lines += [
+                f"Mã nguồn zeroconf {zeroconf.version} đúng bản đóng vào (sdist từ PyPI, SHA-256",
+                f"{pinned[1]}) được đính kèm cùng trang phát hành:",
+                f"{repo_url}/releases/download/{tag}/{sdist}",
+                "Nơi khác có cùng mã nguồn: " + " ; ".join(_project_urls(md.distribution("zeroconf"))),
+            ]
+        else:
+            lines.append("Mã nguồn zeroconf: " + " ; ".join(_project_urls(md.distribution("zeroconf"))))
     qt = components.get(QT_OWNER)
     if qt is not None:
         shiboken = components.get("shiboken6")

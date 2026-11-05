@@ -1,0 +1,184 @@
+# Phát hành Teleport cho Windows khi push tag v* (luật và các bước: docs/CONTRIBUTING.md, mục “Phát hành”).
+#   prepare  kiểm tag khớp teleport.__version__, lấy nội dung Release từ docs/CHANGELOG.md, tải sdist của
+#            thư viện LGPL (zeroconf) từ PyPI và kiểm SHA-256 (packaging/release/release.py).
+#   cli, gui gọi lại build-cli.yml và build-gui.yml (workflow_call): cùng bước build, pytest -m frozen,
+#            test cài/gỡ và chặn cỡ mvp N11 như khi chạy tay.
+#   publish  đóng zip có phiên bản trong tên, ghi SHA256SUMS.txt rồi tạo GitHub Release (pre-release cho
+#            bản alpha/beta). Đây là job duy nhất có quyền ghi (contents: write).
+# Chạy tay (workflow_dispatch) là chạy khô: build và tải artifact, không tạo Release. Chỉ chạy tay trên một
+# tag với dry_run = false mới tạo Release (dùng khi lần chạy theo push tag hỏng vì lỗi tạm thời).
+# Không dùng secret nào ngoài GITHUB_TOKEN, không ký mã.
+name: Phát hành
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Chạy khô (chỉ build và tải artifact, không tạo Release)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Kiểm tag, CHANGELOG, mã nguồn LGPL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.info.outputs.version }}
+      tag: ${{ steps.info.outputs.tag }}
+      prerelease: ${{ steps.info.outputs.prerelease }}
+      publish: ${{ steps.mode.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # Cần lịch sử của main để kiểm commit được gắn tag nằm trên main.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+      - name: Phiên bản và tag
+        id: info
+        run: python packaging/release/release.py info >> "$GITHUB_OUTPUT"
+      - name: Chế độ chạy
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          TAG: ${{ steps.info.outputs.tag }}
+        run: |
+          if [ "$EVENT" = "push" ] || [ "$DRY_RUN" = "false" ]; then
+            if [ "$REF_TYPE" != "tag" ]; then
+              echo "::error::Chỉ tạo Release từ một tag; chạy tay trên nhánh thì để dry_run = true"
+              exit 1
+            fi
+            python packaging/release/release.py check-tag "$REF_NAME"
+            git fetch --no-tags origin main
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "::error::Tag $REF_NAME không nằm trên main (docs/CONTRIBUTING.md, Phát hành)"
+              exit 1
+            fi
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Chạy khô trên $REF_NAME: build như bản phát hành $TAG, không tạo Release" >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Nội dung Release từ CHANGELOG
+        env:
+          TAG: ${{ steps.info.outputs.tag }}
+          PUBLISH: ${{ steps.mode.outputs.publish }}
+        run: |
+          if [ "$PUBLISH" = "true" ]; then
+            python packaging/release/release.py notes "$TAG" --out release-notes.md
+          else
+            python packaging/release/release.py notes "$TAG" --out release-notes.md --allow-missing
+          fi
+      - name: Tải sdist của thư viện LGPL (kiểm SHA-256)
+        run: python packaging/release/release.py fetch-sources --out lgpl-sources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-prepare
+          path: |
+            release-notes.md
+            lgpl-sources/
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true  # chạy lại job trong cùng lần chạy
+
+  cli:
+    name: Build CLI
+    needs: prepare
+    uses: ./.github/workflows/build-cli.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+
+  gui:
+    name: Build GUI và bộ cài
+    needs: prepare
+    uses: ./.github/workflows/build-gui.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+
+  publish:
+    name: Đóng file và tạo Release
+    needs: [prepare, cli, gui]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-prepare
+          path: in/prepare
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.cli.outputs.artifact }}
+          path: in/cli
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.gui.outputs.zip-artifact }}
+          path: in/gui
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.gui.outputs.setup-artifact }}
+          path: in/setup
+      - name: Đóng file phát hành và SHA256SUMS.txt
+        run: |
+          set -euo pipefail
+          mkdir -p out stage
+          # Zip CLI có thư mục bọc teleport\ như zip GUI có teleport-gui\: giải nén ra một thư mục.
+          test -f in/cli/teleport.exe
+          cp -a in/cli stage/teleport
+          (cd stage && zip -r -X -q "../out/teleport-cli-${VERSION}-windows-x64.zip" teleport)
+          test -f in/gui/teleport-gui/Teleport.exe
+          (cd in/gui && zip -r -X -q "../../out/teleport-gui-${VERSION}-windows-x64.zip" teleport-gui)
+          setup="in/setup/teleport-setup-${VERSION}-x64.exe"
+          test -f "$setup"
+          cp "$setup" out/
+          cp in/prepare/lgpl-sources/*.tar.gz out/
+          (cd out && sha256sum -- * > SHA256SUMS.txt)
+          {
+            echo "### File phát hành $TAG"
+            echo '```'
+            ls -l out
+            cat out/SHA256SUMS.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files-${{ needs.prepare.outputs.version }}
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true  # chạy lại job trong cùng lần chạy
+      - name: Tạo GitHub Release
+        if: needs.prepare.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          # Không ghi đè: Release (kể cả bản nháp sót lại của lần tải hỏng) của tag này đã có thì dừng.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG đã có; xóa bản nháp sót lại (nếu có) rồi chạy lại"
+            exit 1
+          fi
+          flags=(--verify-tag --title "Teleport $TAG" --notes-file in/prepare/release-notes.md)
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); else flags+=(--latest); fi
+          gh release create "$TAG" "${flags[@]}" out/*

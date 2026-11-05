@@ -1162,3 +1162,259 @@ def test_pyproject_license_and_package_data_cover_assets() -> None:
     covered = {p.relative_to(ui_dir).as_posix() for g in globs for p in ui_dir.glob(g) if p.is_file()}
     real = {p.relative_to(ui_dir).as_posix() for p in _REAL_ASSETS.rglob("*") if p.is_file()}
     assert real <= covered, sorted(real - covered)
+
+
+# ---------------------------------------------------------------- bản phát hành (TELEPORT_RELEASE_TAG)
+# Đặc tả: docs/CONTRIBUTING.md mục “Phát hành” (workflow đặt TELEPORT_RELEASE_TAG để SOURCE.txt chỉ tới
+# sdist zeroconf trên trang Release của tag; LGPL_SDISTS phải bằng bản ghim trong constraints.txt) và
+# docstring của third_party.py (bản build thử chỉ ghi link PyPI).
+
+
+def _constraints_pins() -> dict[str, str]:
+    text = (_REPO / "packaging" / "pyinstaller" / "constraints.txt").read_text(encoding="utf-8")
+    pins: dict[str, str] = {}
+    for line in text.splitlines():
+        m = re.fullmatch(r"([A-Za-z0-9._-]+)==(\S+)", line.strip())
+        if m:
+            pins[m.group(1).lower()] = m.group(2)
+    return pins
+
+
+def test_release_tag_is_none_when_env_not_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TELEPORT_RELEASE_TAG", raising=False)
+    assert tp.release_tag() is None
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+def test_release_tag_is_none_when_env_empty(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", value)
+    assert tp.release_tag() is None
+
+
+@pytest.mark.parametrize("tag", ["v0.1.0-alpha", "v0.3.0-beta", "v1.0.0", "v10.20.30"])
+def test_release_tag_accepts_release_tag_forms(monkeypatch: pytest.MonkeyPatch, tag: str) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", tag)
+    assert tp.release_tag() == tag
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "v0.1.0-alpha; rm -rf /",
+        "v0.1.0-alpha;rm",
+        "v0.1.0-alpha && calc",
+        "v0.1.0-alpha$(id)",
+        "v0.1.0-alpha`id`",
+        "v0.1.0-alpha\nrm",
+        "v0.1.0-alpha/../../x",
+        "v0.1.0-alpha\\..\\x",
+        "v0.1.0-alpha x",
+        "v0.1.0a0",
+        "0.1.0-alpha",
+        "V0.1.0-alpha",
+        "v0.1.0-Alpha",
+        "v0.1.0-rc1",
+        "v0.1.0-alpha.1",
+        "v0.1.0-alpha1",
+        "v0.1",
+        "v1.0.0.0",
+        "main",
+        "refs/tags/v0.1.0-alpha",
+        "v١.0.0",  # chữ số Ả Rập
+    ],
+)
+def test_release_tag_rejects_malformed_or_injected_value(monkeypatch: pytest.MonkeyPatch, tag: str) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", tag)
+    with pytest.raises(LicenseAuditError):
+        tp.release_tag()
+
+
+@pytest.mark.parametrize("tag", ["v01.0.0", "v1.00.0", "v1.0.01"])
+def test_release_tag_rejects_leading_zero_numbers(monkeypatch: pytest.MonkeyPatch, tag: str) -> None:
+    """SemVer (CONTRIBUTING.md: “Đánh số theo SemVer”) cấm số có 0 đầu."""
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", tag)
+    with pytest.raises(LicenseAuditError):
+        tp.release_tag()
+
+
+def _zeroconf_component(version: str) -> object:
+    return tp.Component("zeroconf", "zeroconf", version, "LGPL-2.1-or-later", ["zeroconf/__init__.py"])
+
+
+def _repo_url() -> str:
+    project = tomllib.loads((_REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    return project["project"]["urls"]["Repository"].rstrip("/")
+
+
+def test_lgpl_sdists_match_constraints_pins() -> None:
+    pins = _constraints_pins()
+    assert "zeroconf" in tp.LGPL_SDISTS
+    for name, (version, sha) in tp.LGPL_SDISTS.items():
+        assert pins.get(name) == version, name
+        assert re.fullmatch(r"[0-9a-f]{64}", sha), name
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_release_source_points_to_zeroconf_sdist_on_release_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", "v0.1.0-alpha")
+    version, sha = tp.LGPL_SDISTS["zeroconf"]
+    text = tp.build_source({"zeroconf": _zeroconf_component(version)}, repo_dir=_REPO, app_version="0.1.0a0")
+    repo = _repo_url()
+    release_lines = [line for line in text.splitlines() if f"{repo}/releases/tag/v0.1.0-alpha" in line]
+    assert release_lines, "thiếu dòng bản phát hành"
+    assert f"{repo}/releases/download/v0.1.0-alpha/zeroconf-{version}.tar.gz" in text
+    assert sha in text
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_release_source_stops_when_bundled_zeroconf_differs_from_lgpl_sdists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", "v0.1.0-alpha")
+    version, _sha = tp.LGPL_SDISTS["zeroconf"]
+    with pytest.raises(LicenseAuditError):
+        tp.build_source(
+            {"zeroconf": _zeroconf_component(version + ".1")}, repo_dir=_REPO, app_version="0.1.0a0"
+        )
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_release_source_stops_when_zeroconf_missing_from_lgpl_sdists(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", "v0.1.0-alpha")
+    version, _sha = tp.LGPL_SDISTS["zeroconf"]
+    monkeypatch.setattr(tp, "LGPL_SDISTS", {})
+    with pytest.raises(LicenseAuditError):
+        tp.build_source({"zeroconf": _zeroconf_component(version)}, repo_dir=_REPO, app_version="0.1.0a0")
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_release_source_stops_on_malformed_tag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", "v0.1.0-alpha; rm")
+    version, _sha = tp.LGPL_SDISTS["zeroconf"]
+    with pytest.raises(LicenseAuditError):
+        tp.build_source({"zeroconf": _zeroconf_component(version)}, repo_dir=_REPO, app_version="0.1.0a0")
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_test_build_source_has_only_pypi_link_and_no_release_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TELEPORT_RELEASE_TAG", raising=False)
+    version, sha = tp.LGPL_SDISTS["zeroconf"]
+    for v in (version, version + ".1"):  # bản build thử không cần zeroconf trùng LGPL_SDISTS
+        text = tp.build_source({"zeroconf": _zeroconf_component(v)}, repo_dir=_REPO, app_version="9.9.9")
+        assert "releases/" not in text
+        assert sha not in text
+        assert "Bản phát hành" not in text
+        zeroconf_lines = [line for line in text.splitlines() if line.startswith("Mã nguồn zeroconf: ")]
+        assert len(zeroconf_lines) == 1
+        assert "http" in zeroconf_lines[0]
+        assert f"Thư viện LGPL: zeroconf {v} (LGPL-2.1-or-later)" in text
+
+
+@pytest.mark.usefixtures("build_tools_versions")
+def test_release_source_keeps_every_line_of_test_build_except_pypi_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bản phát hành chỉ thêm dòng, không bỏ thông tin nào khác của SOURCE.txt bản build thử."""
+    version, _sha = tp.LGPL_SDISTS["zeroconf"]
+    comps = {"zeroconf": _zeroconf_component(version)}
+    monkeypatch.setenv("GITHUB_SHA", "0" * 40)
+    monkeypatch.delenv("TELEPORT_RELEASE_TAG", raising=False)
+    plain = tp.build_source(comps, repo_dir=_REPO, app_version="0.1.0a0").splitlines()
+    monkeypatch.setenv("TELEPORT_RELEASE_TAG", "v0.1.0-alpha")
+    release = tp.build_source(comps, repo_dir=_REPO, app_version="0.1.0a0").splitlines()
+    kept = [line for line in plain if not line.startswith("Mã nguồn zeroconf: ")]
+    missing = [line for line in kept if line not in release]
+    assert missing == []
+
+
+# ---------------------------------------------------------------- sbom_notice_texts
+
+
+def _entry(name: str, version: str, expression: str) -> tuple[str, str, str, str]:
+    return (name, version, expression, "pkg:cargo/" + name)
+
+
+def _table_key() -> tuple[str, str, str]:
+    return sorted(tp.SBOM_NOTICE_TEXTS)[0]
+
+
+@pytest.mark.parametrize(
+    "expression", ["MIT", "BSD-3-Clause", "MIT AND Apache-2.0", "(MIT OR Apache-2.0) AND Unicode-3.0"]
+)
+def test_sbom_notice_rejects_component_needing_own_text_not_in_table(expression: str) -> None:
+    assert ("cryptography", "crate-chua-co", "1.0.0") not in tp.SBOM_NOTICE_TEXTS
+    with pytest.raises(LicenseAuditError, match="crate-chua-co"):
+        tp.sbom_notice_texts("cryptography", [_entry("crate-chua-co", "1.0.0", expression)])
+
+
+@pytest.mark.parametrize(
+    "expression", ["MIT OR Apache-2.0", "Apache-2.0", "Apache-2.0 OR MIT", "Apache-2.0 WITH LLVM-exception"]
+)
+def test_sbom_notice_uses_package_apache_text_for_apache_branch(expression: str) -> None:
+    own, uses_owner = tp.sbom_notice_texts("cryptography", [_entry("crate-chua-co", "1.0.0", expression)])
+    assert own == []
+    assert uses_owner is True
+
+
+def test_sbom_notice_empty_sbom_needs_nothing() -> None:
+    assert tp.sbom_notice_texts("cryptography", []) == ([], False)
+
+
+def test_sbom_notice_returns_texts_of_listed_component() -> None:
+    key, name, version = _table_key()
+    own, uses_owner = tp.sbom_notice_texts(key, [_entry(name, version, "MIT")])
+    assert uses_owner is False
+    assert len(own) == 1
+    got_name, got_version, got_expr, texts = own[0]
+    assert (got_name, got_version, got_expr) == (name, version, "MIT")
+    assert texts == list(tp.SBOM_NOTICE_TEXTS[(key, name, version)])
+
+
+def test_sbom_notice_lookup_ignores_case_of_component_name() -> None:
+    key, name, version = _table_key()
+    own, _uses = tp.sbom_notice_texts(key, [_entry(name.upper(), version, "MIT")])
+    assert len(own) == 1
+
+
+def test_sbom_notice_rejects_listed_component_whose_text_file_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key, name, version = _table_key()
+    tp.sbom_notice_texts(key, [_entry(name, version, "MIT")])  # đối chứng: có file thì qua
+    monkeypatch.setattr(tp, "LICENSES_DIR", tmp_path / "licenses-rong")
+    with pytest.raises(LicenseAuditError, match=re.escape(name)):
+        tp.sbom_notice_texts(key, [_entry(name, version, "MIT")])
+
+
+def test_sbom_notice_rejects_other_version_of_listed_component() -> None:
+    key, name, version = _table_key()
+    with pytest.raises(LicenseAuditError):
+        tp.sbom_notice_texts(key, [_entry(name, version + ".99", "MIT")])
+
+
+def test_sbom_notice_rejects_listed_component_under_other_package() -> None:
+    _key, name, version = _table_key()
+    with pytest.raises(LicenseAuditError):
+        tp.sbom_notice_texts("goi-khac", [_entry(name, version, "MIT")])
+
+
+def test_sbom_notice_mixed_entries_still_stop_on_missing_one() -> None:
+    entries = [_entry("a", "1.0.0", "MIT OR Apache-2.0"), _entry("crate-chua-co", "1.0.0", "MIT")]
+    with pytest.raises(LicenseAuditError, match="crate-chua-co"):
+        tp.sbom_notice_texts("cryptography", entries)
+
+
+def test_every_sbom_notice_text_exists_and_matches_pinned_package_version() -> None:
+    """Văn bản chép sẵn có mặt, không rỗng, và nằm trong thư mục đúng bản ghim ở constraints.txt."""
+    pins = _constraints_pins()
+    assert tp.SBOM_NOTICE_TEXTS
+    for (key, name, version), texts in tp.SBOM_NOTICE_TEXTS.items():
+        assert name == name.lower()
+        assert texts
+        for file_name, source in texts:
+            path = tp.LICENSES_DIR / file_name
+            assert path.is_file(), file_name
+            assert path.read_text(encoding="utf-8").strip(), file_name
+            assert file_name.startswith(f"{key}-{pins[key]}/"), file_name
+            assert f"{name}-{version}" in file_name, file_name
+            assert source.startswith("https://"), source

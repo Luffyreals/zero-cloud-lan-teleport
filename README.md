@@ -16,12 +16,12 @@
 </div>
 
 > [!NOTE]
-> **Teleport đang được phát triển. Chưa có bản phát hành: bản thử nghiệm đầu tiên được gắn tag sau đợt đo trên thiết bị thật ([docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4).**
+> **Teleport đang được phát triển. Bản thử nghiệm đầu tiên là `v0.1.0-alpha` (chỉ Windows, chưa ký mã): tải ở [Releases](https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport/releases).**
 > - **Đã có:** danh tính thiết bị (chứng chỉ tự ký), kênh TLS 1.3 với xác thực hai chiều giữa các thiết bị tin cậy, khám phá thiết bị qua mDNS, ghép đôi qua mạng bằng mã 6 số có nonce cam kết, tự giữ kết nối tới thiết bị đã ghép đôi, các lệnh `teleport identity` / `list` / `listen` / `pair` / `unpair`. Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi (`teleport send` / `receive`): hỏi trước khi nhận, kiểm tra toàn vẹn từng khối và cả file, không bao giờ ghi đè file sẵn có, mất kết nối thì tự nối lại (chờ tới 24 giờ), kể cả sau khi dừng hay tắt `teleport receive` rồi chạy lại, chỉ gửi phần còn thiếu. Số đo thực tế: [docs/benchmark.md](docs/benchmark.md).
-> - **Giao diện Windows (đã có):** danh sách cuộc trò chuyện theo từng máy, trang “Tìm máy mới” (radar, nhập IP) và trang “Chờ ghép đôi”, ghép đôi bằng mã 6 số, kéo thả, dán hoặc “Gửi file…”, hộp hỏi nhận, tiến độ lượt truyền và tự nối lại; khay hệ thống và chạy nền; trang Cài đặt; giao diện English; khởi động cùng Windows; đồng bộ clipboard văn bản và ảnh (bật riêng cho từng máy); dùng được bằng bàn phím và trình đọc màn hình. Bản zip chạy không cần cài Python và bộ cài thử Inno Setup (`packaging/inno/teleport.iss`) được build tay qua GitHub Actions, chưa ký số. Cách dùng: [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng).
-> - **Chưa có:** bản phát hành chính thức; bộ cài đã ký số; bản đóng gói cho macOS và Linux (giao diện trên hai hệ này mới chạy trong test tự động).
+> - **Giao diện Windows (đã có):** danh sách cuộc trò chuyện theo từng máy, trang “Tìm máy mới” (radar, nhập IP) và trang “Chờ ghép đôi”, ghép đôi bằng mã 6 số, kéo thả, dán hoặc “Gửi file…”, hộp hỏi nhận, tiến độ lượt truyền và tự nối lại; khay hệ thống và chạy nền; trang Cài đặt; giao diện English; khởi động cùng Windows; đồng bộ clipboard văn bản và ảnh (bật riêng cho từng máy); dùng được bằng bàn phím và trình đọc màn hình. Bản zip chạy không cần cài Python và bộ cài Inno Setup được build tự động khi gắn tag và đính kèm trang Releases, chưa ký số. Cách dùng: [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng).
+> - **Chưa có:** bản phát hành chính thức (`v1.0.0`); bộ cài đã ký số; bản đóng gói cho macOS và Linux (giao diện trên hai hệ này mới chạy trong test tự động).
 > - **Hackathon:** demo 08/11, phạm vi ở [docs/mvp.md](docs/mvp.md) mục 4.1.
-> - **Chưa đo đủ trên thiết bị thật:** số đo hiện có là trên một máy (loopback) và máy ảo, cộng một lần đo tay giữa hai máy thật chỉ để tham khảo; đo đầy đủ qua mạng thật giữa hai máy, với ổ đích chậm và trên các hệ điều hành khác sẽ làm một đợt sau, và các bản thử nghiệm được phát hành sau đợt đo đó ([docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4).
+> - **Đo trên thiết bị thật mới có một phần:** hai máy Windows thật qua Wi-Fi (mvp N1, RAM khi truyền 10 GiB, kiểm H1–H5); còn mạng dây, ổ đích chậm, so với SMB và các hệ điều hành khác ([docs/benchmark.md](docs/benchmark.md), [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.4).
 >
 > Các tính năng bên dưới là **mục tiêu của v1.0**. Tiến độ xem ở [Lộ trình](#lộ-trình); lịch sử thay đổi ở [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
@@ -103,12 +103,14 @@ Hướng dẫn cho bản hiện tại: giao diện tối thiểu trên Windows v
 
 ### 1. Lấy Teleport
 
-Chưa có bộ cài và chưa có bản phát hành. Chọn một trong hai cách:
+Bản thử nghiệm mới nhất ở trang [Releases](https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport/releases) (chỉ Windows, chưa ký mã nên Windows có thể hiện SmartScreen: bấm “More info” → “Run anyway”). Chọn một trong bốn cách:
 
-- **Bản zip dùng thử (Windows, không cần Python):** vào tab [Actions → Build GUI (thử)](https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport/actions/workflows/build-gui.yml), mở lần chạy mới nhất, tải artifact `teleport-gui-…-windows` (cần đăng nhập GitHub), giải nén ra thư mục `teleport-gui\`, đọc `DOC-TRUOC.txt` trong đó (giải nén ở đâu, SmartScreen vì bản này chưa ký mã, tường lửa, hồ sơ mạng) rồi chạy `Teleport.exe`.
+- **Bộ cài (Windows):** tải `teleport-setup-…-x64.exe` rồi chạy.
+- **Bản zip (Windows, không cần cài):** tải zip `teleport-gui-…`, giải nén ra thư mục `teleport-gui\`, đọc `DOC-TRUOC.txt` trong đó (giải nén ở đâu, SmartScreen, tường lửa, hồ sơ mạng) rồi chạy `Teleport.exe`.
+- **Dòng lệnh (Windows, không cần cài):** tải zip `teleport-cli-…`, giải nén, chạy `teleport.exe` trong thư mục `teleport\`. Bộ cài và zip giao diện không có lệnh `teleport`.
 - **Từ mã nguồn:** cài như [Dành cho nhà phát triển](#cài-đặt), rồi chạy `teleport-gui` (giao diện, hiện mới thử trên Windows) hoặc `teleport` (dòng lệnh, Windows / macOS / Linux).
 
-Lần đầu Teleport mở cổng mạng, tường lửa Windows hỏi quyền: cho phép trên mạng **Private**.
+Dùng bản zip (hay bộ cài với `/CURRENTUSER`) thì lần đầu Teleport mở cổng mạng, tường lửa Windows hỏi quyền: cho phép trên mạng **Private**. Bộ cài mặc định tự tạo rule tường lửa.
 
 ### 2. Dùng giao diện
 
@@ -194,10 +196,10 @@ Phát hiện lỗ hổng? Xem [docs/SECURITY.md](docs/SECURITY.md).
 | Phiên bản | Nội dung |
 |---|---|
 | — | ✅ Nền tảng: khung dự án, CI 3 hệ điều hành, danh tính thiết bị, TLS 1.3 + mTLS |
-| — | ✅ Khám phá thiết bị & ghép đôi: mDNS, ghép đôi qua mạng, tự giữ kết nối, lệnh `teleport list` / `listen` / `pair` / `unpair`; đạt mvp N1 (đo trên máy ảo bridged) |
-| `v0.1.0-alpha` | ⏸ Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi: lệnh `teleport send` / `receive` (code xong; phát hành sau đợt đo trên thiết bị thật) |
+| — | ✅ Khám phá thiết bị & ghép đôi: mDNS, ghép đôi qua mạng, tự giữ kết nối, lệnh `teleport list` / `listen` / `pair` / `unpair`; đạt mvp N1 (máy ảo bridged; một phần trên hai máy Windows thật qua Wi-Fi, [docs/benchmark.md](docs/benchmark.md)) |
+| `v0.1.0-alpha` | ✅ Gửi file lớn qua dòng lệnh giữa hai máy đã ghép đôi: lệnh `teleport send` / `receive`. Bản phát hành này gồm mọi thứ đã có tới lúc gắn tag, cả giao diện Windows ([docs/CHANGELOG.md](docs/CHANGELOG.md)) |
 | `v0.2.0-alpha` | ⏳ Tự nối lại cả sau khi rớt mạng lâu, tắt app nhận hay khởi động lại máy nhận; chỉ gửi phần còn thiếu |
-| `v0.3.0-beta` | ⏳ Giao diện (cuộc trò chuyện theo từng máy, radar tìm máy mới), khay hệ thống, Tiếng Việt / English (đang làm phần tối thiểu cho buổi demo hackathon) |
+| `v0.3.0-beta` | ⏳ Giao diện (cuộc trò chuyện theo từng máy, radar tìm máy mới), khay hệ thống, Tiếng Việt / English (phần lớn đã có trong `v0.1.0-alpha`; còn việc tồn đọng, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v0.4.0-beta` | ⏳ Đồng bộ clipboard (code xong; còn việc tồn đọng, xem [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1) |
 | `v1.0.0` | Bộ cài cho Windows, macOS, Linux; tài liệu người dùng |
 

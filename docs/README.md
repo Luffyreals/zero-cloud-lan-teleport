@@ -22,7 +22,7 @@ Mọi tài liệu của dự án nằm trong thư mục này (trừ `.claude/CLA
 | [protocol.md](protocol.md) | Byte nào đi trên dây? | Đặc tả giao thức (phiên bản 1) | Mọi thay đổi định dạng trên dây, trong cùng Pull Request |
 | [benchmark.md](benchmark.md) | Đo thực tế thì có đạt không? | Số đo thực tế của mvp N1–N12 và kết quả kiểm H1–H5 (mvp mục 4.1): định nghĩa phép đo, môi trường, kết quả, kết luận | Mỗi lần đo |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Làm việc với repo thế nào? | Nhánh, commit, kiểm tra trước Pull Request, phát hành | Đổi quy trình |
-| [SECURITY.md](SECURITY.md) | Báo lỗ hổng ở đâu? | Cách báo lỗ hổng, phạm vi | Đổi chính sách |
+| [SECURITY.md](SECURITY.md) | Báo lỗ hổng ở đâu? | Cách báo lỗ hổng, phạm vi, phiên bản được hỗ trợ | Đổi chính sách |
 | [CHANGELOG.md](CHANGELOG.md) | Đã thay đổi gì? | Lịch sử thay đổi theo phiên bản | Mỗi thay đổi người dùng nhận thấy |
 | [hieu_du_an.md](hieu_du_an.md) | Dự án chạy thế nào, nói bằng lời đơn giản? | Không là nguồn của thông tin nào: ghi chú dễ hiểu về ghép đôi và gửi file qua một ví dụ; khi lệch thì `protocol.md` và `architecture.md` đúng | Đổi luồng ghép đôi hay gửi file |
 | [.claude/CLAUDE.md](../.claude/CLAUDE.md) | Claude Code làm việc với repo thế nào? | Luật, lệnh và bẫy dành cho Claude Code; đội subagent và quy trình chạy chúng (luật nền chỉ nhắc lại một câu kèm tham chiếu; không chép con số hay chi tiết thiết kế) | Đổi quy trình, thêm một bẫy |
