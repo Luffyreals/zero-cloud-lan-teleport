@@ -224,7 +224,7 @@ Tóm tắt từ [docs/ke_hoach.md](docs/ke_hoach.md) mục 5.1, nơi duy nhất 
 |---|---|---|
 | — | Nền tảng; khám phá thiết bị và ghép đôi | ✅ |
 | `v0.1.0-alpha` | Gửi file lớn giữa hai máy đã ghép đôi. Bản phát hành gồm mọi thứ đã có lúc gắn tag, cả giao diện Windows | ✅ |
-| `v0.2.0-alpha` | Tự nối lại cả sau khi rớt mạng lâu hay tắt app nhận, chỉ gửi phần còn thiếu | ⏳ đã có trong alpha, còn phép đo trên thiết bị thật |
+| `v0.2.0-alpha` | Tự nối lại cả sau khi rớt mạng lâu hay tắt app nhận, chỉ gửi phần còn thiếu | ⏸ đã có trong alpha, chỉ còn phép đo trên thiết bị thật |
 | `v0.3.0-beta` | Giao diện, khay hệ thống, Tiếng Việt / English | ⏳ phần lớn đã có |
 | `v0.4.0-beta` | Đồng bộ clipboard | ⏳ code xong; còn một ca ảnh lớn chưa đạt mvp N6, còn đo và thử trên máy thật |
 | `v1.0.0` | Bộ cài Windows, macOS, Linux; tài liệu người dùng | ⏳ mới có bộ cài Windows chưa ký |

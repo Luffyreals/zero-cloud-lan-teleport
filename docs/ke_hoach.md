@@ -62,7 +62,7 @@
 ```
 
 - Phân tầng `core ← trust ← net ← app ← ui / cli`, được kiểm tra tự động trong repo. Logic truyền file và nối lại nằm ở `core` dưới dạng máy trạng thái thuần (sự kiện vào, hành động ra); `net` chỉ đọc/ghi socket.
-- Mô hình tiến trình: mỗi thư mục cấu hình một node. Tới `v0.2`, mỗi lần chạy CLI là một node. Từ `v0.3`, giao diện chạy node trong một thread riêng của tiến trình giao diện; CLI và giao diện cùng thư mục cấu hình loại trừ nhau qua `node.lock`, còn IPC CLI↔giao diện hoãn lại ([architecture.md](architecture.md) mục 2, 5).
+- Mô hình tiến trình: mỗi thư mục cấu hình một node. Chạy CLI thì mỗi lệnh là một node; chạy giao diện thì node nằm trong một thread riêng của tiến trình giao diện; CLI và giao diện cùng thư mục cấu hình loại trừ nhau qua `node.lock`, còn IPC CLI↔giao diện hoãn lại ([architecture.md](architecture.md) mục 2, 5).
 - Mô tả chính thức và trạng thái từng module: [architecture.md](architecture.md).
 
 ### 3.1. Khám phá, kết nối & ghép đôi
@@ -91,8 +91,8 @@
 - **Bên nhận:** đọc từng khung → băm lại và so với hash trong header → đẩy vào `asyncio.Queue(maxsize=8)` → luồng ghi đĩa (`DiskExecutor` của node, [architecture.md](architecture.md) mục 5) ghi vào `.part` đúng vị trí `idx × BLOCK_SIZE`, cứ 16 khối thì `fsync` và cập nhật trạng thái nối lại (mục 3.4). Ổ đĩa chậm → hàng đợi đầy → ngừng đọc socket → TCP báo bên gửi chậm lại. Kết quả: RAM tối đa khoảng 8–10 khối, bất kể file lớn cỡ nào.
 - **Giới hạn tốc độ gửi** (tùy chọn trong cài đặt): token bucket áp theo từng đoạn 64 KiB, để dòng byte không ngưng lâu tới mức bên nhận tưởng mất kết nối.
 - Mỗi lượt truyền chỉ có một kết nối dữ liệu, các file được gửi lần lượt, và mỗi chiều giữa hai máy chỉ chạy một lượt truyền (lượt khác xếp hàng), nên RAM không tăng theo số file hay số lượt truyền.
-- **Hoàn tất:** đọc lại `.part` từ đĩa và so từng khối → so Merkle root → `fsync` → đổi tên không ghi đè (mục 3.4).
-- Mô hình tiến trình tới `v0.2`: mỗi lệnh CLI là một node giữ `node.lock`, nên trên cùng một thư mục cấu hình không chạy được `teleport receive` và `teleport send` cùng lúc, và `teleport send` phải chạy tới khi lượt xong; mất kết nối thì nó chờ nối lại (thời hạn: Giai đoạn 2 ở mục 5.2, từ Giai đoạn 3 theo `protocol.md` mục 6.2). Giới hạn này hết ở `v0.3` khi giao diện giữ node (`architecture.md` mục 2).
+- **Hoàn tất:** đọc lại `.part` từ đĩa và so từng khối → so Merkle root → `fsync` → đổi tên không ghi đè (mục 3.4; đổi tên: mục 3.3).
+- Khi chạy CLI, mỗi lệnh là một node giữ `node.lock`, nên trên cùng một thư mục cấu hình không chạy được `teleport receive` và `teleport send` cùng lúc, và `teleport send` phải chạy tới khi lượt xong; mất kết nối thì nó chờ nối lại (thời hạn: Giai đoạn 2 ở mục 5.2, từ Giai đoạn 3 theo `protocol.md` mục 6.2). Giới hạn này còn tới khi có IPC CLI↔giao diện; giao diện giữ node nhưng không gỡ được nó, vì CLI và giao diện cùng thư mục cấu hình loại trừ nhau (`architecture.md` mục 2).
 
 ### 3.3. An toàn khi nhận
 *(mvp F4, N8 — bắt buộc, không cắt khi trễ tiến độ)*
@@ -148,15 +148,7 @@ Mọi kết nối đi vào **một cổng**, bắt tay TLS 1.3, rồi hai bên g
 | `clipboard` | ↔ | một mảnh của một clip: `clip_id`, `kind` (`text` / `image/png`), `sha256`, `total`, `index`, `count`, dữ liệu (văn bản hoặc base64); trường và luật: `protocol.md` mục 3.2, 3.3 |
 | `ping` / `pong` | ↔ | giữ kết nối, phát hiện mất kết nối |
 
-**Khung khối nhị phân** (rút gọn từ bảng gói tin trong bản ý tưởng ban đầu), đóng gói bằng `struct.pack("!BII32s", ...)`:
-
-| Trường | Byte | Kiểu | Ghi chú |
-|---|---|---|---|
-| `type` | 1 | UInt8 | `0x02` = khối dữ liệu |
-| `block_index` | 4 | UInt32 (BE) | Hỗ trợ tới 4 tỷ khối × 1 MiB |
-| `length` | 4 | UInt32 (BE) | Đúng bằng độ dài khối; khối cuối có thể ngắn hơn 1 MiB |
-| `sha256` | 32 | bytes | SHA-256 của `payload` |
-| `payload` | biến thiên | bytes | Dữ liệu thô |
+**Khung khối nhị phân** (rút gọn từ bảng gói tin trong bản ý tưởng ban đầu): header cố định gồm loại khung, chỉ số khối, độ dài và SHA-256 của khối, theo sau là dữ liệu thô. Định dạng từng trường: `protocol.md` mục 4.2.
 
 ### 3.6. Đồng bộ clipboard
 *(mvp F8, N6)*
@@ -246,7 +238,7 @@ Nguyên tắc: **làm bằng dòng lệnh (CLI) trước, giao diện sau.** Ph�
 | 0 | Nền tảng, repo, CI | 1 tuần | 1 | — | — | — | ✅ Đã xong |
 | 1 | Khám phá & ghép đôi | 2 tuần | 3 | — | F2, F3 (lõi + CLI), F12 một phần | Thấy máy khác và ghép đôi qua CLI | ✅ Đã xong (N1 đạt khi đo trên máy ảo bridged, [benchmark.md](benchmark.md) mục 3.3, và trên hai máy Windows thật qua Wi-Fi, mục 3.6; phần còn lại của D1 thuộc đợt đo, mục 5.4) |
 | 2 | Truyền file, backpressure, an toàn khi nhận | 3 tuần | 6 | `v0.1.0-alpha` | F4, F5 (CLI), F12 | Gửi file lớn qua CLI giữa 2 máy đã ghép đôi | ✅ Đã xong (D3 đạt; D4 hoãn, xem mục 5.2) |
-| 3 | Merkle & tự nối lại | 3 tuần | 9 | `v0.2.0-alpha` | F6, F7 | Rớt mạng vẫn tự nối lại, chỉ gửi phần còn thiếu. **Bản CLI đầu tiên đáng cho người dùng kỹ thuật dùng thử** | ⏳ Đang làm |
+| 3 | Merkle & tự nối lại | 3 tuần | 9 | `v0.2.0-alpha` | F6, F7 | Rớt mạng vẫn tự nối lại, chỉ gửi phần còn thiếu. **Bản CLI đầu tiên đáng cho người dùng kỹ thuật dùng thử** | ⏸ Code xong, chờ đo D5 (mục 5.4) |
 | 4 | Giao diện, khay hệ thống, đa ngôn ngữ | 2 tuần | 11 | `v0.3.0-beta` | F2–F5 (giao diện), F9, F10, F11 | Dùng hoàn toàn bằng giao diện: radar, kéo thả, ghép đôi | ⏳ Phần lớn đã xong (từng việc: mục 5.2); còn thông báo lỗi theo mvp mục 8, đo RAM khi rảnh (N3), kiểm AC giao diện, D8 và phần cho buổi demo hackathon (mục 5.5) |
 | 5 | Đồng bộ clipboard | 1 tuần | 12 | `v0.4.0-beta` | F8 | Đồng bộ clipboard | ⏳ Code xong (module: [architecture.md](architecture.md) mục 3); còn ca ảnh 8192² vượt mvp N6 ([benchmark.md](benchmark.md) mục 9.4) và đợt đo (mục 5.4); chưa thử tay trên máy thật (Wayland, macOS, trình quản lý mật khẩu) |
 | 6 | Hoàn thiện, bộ cài, phát hành | 3 tuần | 15 | `v1.0.0` | F1, toàn bộ N1–N12 | Bộ cài 3 hệ điều hành, tài liệu người dùng, đã thử với người dùng thật | ⏳ Bộ cài Windows (Inno Setup, chưa ký mã) build tự động khi gắn tag và đính kèm GitHub Release ([CONTRIBUTING.md](CONTRIBUTING.md) “Phát hành”); phần còn lại chưa làm |
@@ -309,7 +301,7 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 - Các thông báo lỗi theo mvp mục 8.
 - ✅ Khay hệ thống, chạy nền (F9); node chạy trong tiến trình giao diện, một bản giao diện mỗi thư mục cấu hình ([architecture.md](architecture.md) mục 2).
 - IPC CLI↔giao diện (CLI gửi lệnh cho node của giao diện thay vì tự chạy node): **dời ra khỏi Giai đoạn 4**, chưa có lịch. Tới khi có, CLI và giao diện cùng thư mục cấu hình loại trừ nhau và CLI báo phải thoát giao diện trước (mvp mục 8).
-  - Lưu ý khi làm IPC: tới `v0.2`, CLI in ra stdout đồng bộ ngay trên event loop của node, nên terminal ngừng đọc (ví dụ đang tạm dừng cuộn) có thể làm cả node đứng chờ. Máy khác trong LAN không gây ra được việc này. Khi node chạy trong tiến trình giao diện, việc in hay gửi sự kiện cho CLI qua IPC không được chặn event loop của node.
+  - Lưu ý khi làm IPC: hiện nay CLI in ra stdout đồng bộ ngay trên event loop của node, nên terminal ngừng đọc (ví dụ đang tạm dừng cuộn) có thể làm cả node đứng chờ. Máy khác trong LAN không gây ra được việc này. Khi node chạy trong tiến trình giao diện, việc in hay gửi sự kiện cho CLI qua IPC không được chặn event loop của node.
   - Node sống lâu trong tiến trình giao diện: mở lại `Node` (cùng tiến trình) hay để tiến trình khác lấy `node.lock` vừa nhả phải chờ đuôi đĩa của node cũ xong, không thì có thể mở lại đúng lượt mà thread đĩa cũ còn ghi và lượt nối lại hỏng; giữ một event loop suốt đời ứng dụng để đuôi đĩa chạy xong (đuôi đĩa: [architecture.md](architecture.md) mục 5, “Thứ tự `Node.close()`”).
 - ✅ Tiếng Việt và English bằng Qt Linguist (F11); dùng được bằng bàn phím, theo chế độ sáng/tối (N12; phần chưa kiểm tay: [architecture.md](architecture.md) mục 3).
 - Đo RAM khi rảnh (N3) ngay ở bản này.
@@ -344,13 +336,13 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 
 ### 5.4. Đợt đo trên thiết bị thật
 
-Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.md) mục 3.3) và hiện mượn tạm được một máy Windows 10 thật (đã đo một phần D1 và D3 ngày 05/11: [benchmark.md](benchmark.md) mục 3.6, 4.10), nên mọi phép đo cần máy thật thứ hai hay thiết bị khác được **dồn vào một đợt**, làm một lượt khi có thiết bị. Việc code các giai đoạn không chờ đợt này: dòng “Xong khi” của mỗi giai đoạn ở mục 5.2 tách phần kiểm được ngay (test tự động, loopback, máy ảo) khỏi phần thuộc đợt đo, và chính các dòng đó ghi giai đoạn nào chờ mã D nào. Mục này là nơi duy nhất liệt kê các phép đo của đợt; định nghĩa phép đo, script và kết quả ở [benchmark.md](benchmark.md), ngưỡng và điều kiện đo ở [mvp.md](mvp.md) mục 9.
+Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.md) mục 3.3) và hiện mượn tạm được một máy Windows 10 thật (đã đo một phần D1 và đo xong D3 ngày 05/11: [benchmark.md](benchmark.md) mục 3.6, 4.10), nên mọi phép đo cần máy thật thứ hai hay thiết bị khác được **dồn vào một đợt**, làm một lượt khi có thiết bị. Việc code các giai đoạn không chờ đợt này: dòng “Xong khi” của mỗi giai đoạn ở mục 5.2 tách phần kiểm được ngay (test tự động, loopback, máy ảo) khỏi phần thuộc đợt đo, và chính các dòng đó ghi giai đoạn nào chờ mã D nào. Mục này là nơi duy nhất liệt kê các phép đo của đợt; định nghĩa phép đo, script và kết quả ở [benchmark.md](benchmark.md), ngưỡng và điều kiện đo ở [mvp.md](mvp.md) mục 9.
 
 | Mã | Phép đo | Thiết bị cần | Định nghĩa, cách đo |
 |---|---|---|---|
 | D1 | mvp N1 giữa hai máy thật, qua Wi-Fi có điểm phát thật và qua mạng dây; kịch bản mất gói ở hai lần resolve đầu ([protocol.md](protocol.md) mục 8) | Máy thật thứ hai | [benchmark.md](benchmark.md) mục 3 |
 | D2 | mvp N2: Teleport so với SMB, qua Wi-Fi và qua mạng dây | Máy thật thứ hai chạy Windows | [benchmark.md](benchmark.md) mục 5 |
-| D3 | mvp N3 khi truyền qua card mạng giữa hai máy, với cỡ file lớn nhất mvp N3 nêu, RAM hai phía; đo cùng lượt D2 | Máy thật thứ hai | [benchmark.md](benchmark.md) mục 4.1 (“Qua card mạng giữa hai máy”), 4.4 |
+| D3 | mvp N3 khi truyền qua card mạng giữa hai máy, với cỡ file lớn nhất mvp N3 nêu, RAM hai phía; định đo cùng lượt D2, nhưng đã đo và đóng riêng ngày 05/11 ([benchmark.md](benchmark.md) mục 4.10) | Máy thật thứ hai | [benchmark.md](benchmark.md) mục 4.1 (“Qua card mạng giữa hai máy”), 4.4 |
 | D4 | mvp N3 khi ổ đích chậm; nhận nhiều file nhỏ trên ổ chậm (mục 8, dòng rủi ro “nhiều file nhỏ”) | USB định dạng NTFS hoặc exFAT, hoặc ổ ảo giới hạn tốc độ | [benchmark.md](benchmark.md) mục 4.4, 4.8 |
 | D5 | mvp N4 trên mạng thật: tắt Wi-Fi giữa lượt truyền rồi bật lại; phần gửi thừa do bộ đệm socket qua card mạng thật, trên Linux (máy ảo bridged được) và trên macOS ([protocol.md](protocol.md) mục 4.3) | Máy thật thứ hai hoặc máy ảo Linux bridged; một máy macOS | [benchmark.md](benchmark.md) mục 7.4, 7.5 |
 | D6 | mvp N6 trên loại mạng Wi-Fi mà mvp N6 nêu | Máy thật thứ hai; điểm phát Wi-Fi đúng loại đó | [benchmark.md](benchmark.md) mục 9 (việc còn lại: 9.5) |
@@ -373,7 +365,7 @@ Phạm vi và tiêu chí H1–H5: [mvp.md](mvp.md) mục 4.1. Buổi demo hết 
 - Không thêm file test mới chỉ để theo một thay đổi giao diện.
 - Ngoại lệ (quyết định 05/11): PR phát hành `v0.1.0-alpha` (workflow phát hành, giấy phép đóng gói, tài liệu; không đổi `src/`) được merge và gắn tag trước buổi demo.
 
-Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 08/11, nên mọi việc cần hai máy thật dồn vào các ngày đó.
+Máy thật thứ hai (máy mượn) theo lịch ban đầu chỉ có mặt các ngày 02, 06, 07 và 08/11, nên mọi việc cần hai máy thật dồn vào các ngày đó; thực tế máy có mặt sớm hơn, nên H1–H5, một phần D1 và D3 đã làm ngày 05/11 ([benchmark.md](benchmark.md) mục 3.6, 4.10, 6.1).
 
 | Ngày | Việc | Xong khi |
 |---|---|---|
@@ -388,7 +380,7 @@ Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 0
 - Kiểm sớm ngày 02/11 **không tính là đạt**, kể cả khi đủ H1–H5: không ghi kết quả H vào [benchmark.md](benchmark.md) mục 6.
 - Zip đổi commit sau 06/11 (RC2 hay bản sửa khác) thì kiểm lại các H mà thay đổi đó có thể ảnh hưởng, trên đúng zip mới, trước khi chốt.
 
-Các ngày kiểm chính thức 06–07/11 đo luôn được D1, D5 (mục 5.4) nếu kịp (D3 đã đo 05/11, [benchmark.md](benchmark.md) mục 4.10); không kịp thì để lại cho đợt đo.
+Những ngày còn máy mượn tới 08/11 đo luôn được phần còn lại của D1 và D5 (mục 5.4) nếu kịp (D3 đã đo 05/11, [benchmark.md](benchmark.md) mục 4.10); không kịp thì để lại cho đợt đo.
 
 ---
 
