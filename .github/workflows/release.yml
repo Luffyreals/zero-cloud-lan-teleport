@@ -30,7 +30,8 @@ concurrency:
 jobs:
   prepare:
     name: Kiểm tag, CHANGELOG, mã nguồn LGPL
-    runs-on: ubuntu-latest
+    # Ghim ảnh runner: ubuntu-latest đã sang 26.04, ở đó setup-python không có 3.12.10.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       version: ${{ steps.info.outputs.version }}
@@ -113,7 +114,7 @@ jobs:
   publish:
     name: Đóng file và tạo Release
     needs: [prepare, cli, gui]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
