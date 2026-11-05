@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🛰️ ZCL Teleport
+<img src="docs/anh/logo.png" alt="Logo ZCL Teleport" width="160">
+
+# ZCL Teleport
 
 ### Zero-Cloud LAN Teleport
 
@@ -13,8 +15,6 @@
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
 
 **[🌐 Trang giới thiệu](https://nha-cong-dong.github.io/teleport-site/)** · **[⬇️ Tải bản thử nghiệm](https://github.com/Nha-Cong-Dong/zero-cloud-lan-teleport/releases)** · **[📖 Tài liệu](docs/README.md)**
-
-<img src="docs/anh/cua-so-chinh.png" alt="Cửa sổ chính của Teleport: cột trái là các máy đã ghép đôi, khung phải là cuộc trò chuyện với PC-Nha có một file đang gửi" width="760">
 
 </div>
 
