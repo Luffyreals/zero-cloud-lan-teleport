@@ -3,7 +3,7 @@
 > **Vai trò:** số đo thực tế của các yêu cầu phi chức năng và kết quả kiểm tiêu chí MVP hackathon.
 > **Nguồn duy nhất cho:** định nghĩa từng phép đo, môi trường, kết quả từng lần đo và kết luận so với ngưỡng.
 > **Không chứa:** ngưỡng yêu cầu → [mvp.md](mvp.md) mục 9 (tham chiếu theo mã `mvp N1`…, không chép số). Thiết kế khám phá, TTL, chu kỳ kiểm còn sống và cận trên đã tính → [protocol.md](protocol.md) mục 8. Trạng thái giai đoạn → [ke_hoach.md](ke_hoach.md) mục 5.1.
-> **Cập nhật:** 2026-11-02
+> **Cập nhật:** 2026-11-05
 
 ## 1. Quy ước
 
@@ -18,9 +18,9 @@
 
 | Mã | Lần đo gần nhất | Kết luận |
 |---|---|---|
-| mvp N1 | 2026-10-23: host Windows 11 + máy ảo Ubuntu bridged trên cùng máy (mục 3.3) | **ĐẠT trên máy ảo bridged**; chưa đo trên hai máy thật (mục 3.4) |
+| mvp N1 | 2026-11-05: hai máy Windows thật (11 ↔ 10) qua Wi-Fi 2,4 GHz, cùng điểm phát (mục 3.6); trước đó 2026-10-23: host Windows 11 + máy ảo Ubuntu bridged (mục 3.3) | **ĐẠT trên hai máy thật qua Wi-Fi** cho phần xuất hiện, thoát app và mất mạng đột ngột (tắt Wi-Fi, app bị giết); máy **ngủ** thật, mạng dây và kịch bản mất gói ở hai lần resolve đầu chưa đo (mục 3.4) |
 | mvp N2 | 2026-10-29/30: đo tay qua giao diện, hai máy Windows thật qua Wi-Fi 2,4 GHz, một file 1,89 GiB (mục 5.4) | **CHƯA ĐỦ DỮ LIỆU**: lần đo tay cho tỉ số khoảng 0,96 nhưng không theo phương pháp mục 5.1 (1 lần Teleport, 2 lần SMB, một cỡ file, bấm giờ tay); lượt đo theo mục 5.1 và mạng dây chưa đo (mục 5.3) |
-| mvp N3 | 2026-10-26: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, loopback, 1 / 5 / 10 GiB (mục 4.6); lúc rảnh của `receive` 10 phút (mục 4.7); ổ đích USB dừng ở bước kiểm ổ (mục 4.8). 2026-10-28: trước/sau thay đổi ghi trạng thái nối lại bền, 1 GiB và 1000 file nhỏ (mục 4.9) | **CHƯA ĐỦ DỮ LIỆU**: phần truyền qua loopback ĐẠT cả ba tiêu chí mục 4.1 với 1, 5 và 10 GiB; lúc rảnh của CLI chỉ ghi nhận; ổ đích chậm (USB có sẵn là FAT32, mục 4.8), 10 GiB qua card mạng giữa hai máy, lúc rảnh của app có giao diện chưa đo (mục 4.4). Sau thay đổi ghi trạng thái nối lại bền (mục 4.9), tiêu chí 1 và 2a vẫn ĐẠT với 1 GiB và 1000 file nhỏ |
+| mvp N3 | 2026-11-05: 10 GiB qua Wi-Fi 2,4 GHz giữa hai máy Windows thật, RAM hai phía, 1 lần (mục 4.10). 2026-10-26: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, loopback, 1 / 5 / 10 GiB (mục 4.6); lúc rảnh của `receive` 10 phút (mục 4.7); ổ đích USB dừng ở bước kiểm ổ (mục 4.8). 2026-10-28: trước/sau thay đổi ghi trạng thái nối lại bền, 1 GiB và 1000 file nhỏ (mục 4.9) | **CHƯA ĐỦ DỮ LIỆU**: phần truyền qua loopback ĐẠT cả ba tiêu chí mục 4.1 với 1, 5 và 10 GiB; lúc rảnh của CLI chỉ ghi nhận; ổ đích chậm (USB có sẵn là FAT32, mục 4.8), lúc rảnh của app có giao diện chưa đo (mục 4.4). Sau thay đổi ghi trạng thái nối lại bền (mục 4.9), tiêu chí 1 và 2a vẫn ĐẠT với 1 GiB và 1000 file nhỏ. Qua Wi-Fi giữa hai máy thật (mục 4.10), RSS tăng 4,8 MiB bên gửi và 6,0 MiB bên nhận, Q4 − Q1 âm ở cả hai; D3 ĐẠT với 1 lần theo quyết định của người dùng (mục 4.10) |
 | mvp N4 | 2026-10-31: `teleport send` / `receive` thật, hai tiến trình trên một máy Windows 11, qua proxy TCP trên loopback, file 1 GiB, cắt ở 85 % theo 6 kiểu (mục 7.3) | **CHƯA ĐỦ DỮ LIỆU**: trên loopback Windows phần gửi thừa mỗi gián đoạn lớn nhất 24,31 MiB, ĐẠT ở mọi lần (49/49); theo tiêu chí ở mục 7.1 thì **không đặt** `SO_RCVBUF`/`SO_SNDBUF` trên Windows. Linux (máy ảo), card mạng thật / Wi-Fi và macOS chưa đo (mục 7.4, D5) |
 | mvp N5 | — | chưa đo |
 | mvp N6 | 2026-11-02: hai `Node` thật trong một tiến trình trên một máy Windows 11, loopback, `FakeClipboard` (mục 9.3); backend Qt `read`/`write` ảnh thật, nền Qt offscreen, cùng máy (M4, mục 9.4) | **KHÔNG ĐẠT** ở ca ảnh 8192² dễ nén (cận dưới trên nền offscreen đã vượt ngưỡng ảnh, mục 9.4); các ca còn lại **CHƯA ĐỦ DỮ LIỆU** (D6): trên loopback văn bản 1 KB và 1 MiB, ảnh PNG 10 MiB đều dưới ngưỡng ở mọi lần, RAM phẳng sau 1000 clip; backend Qt nhanh với ảnh 1920×1080 và 3840×2160 nhưng ảnh 8192² dễ nén (PNG 3,53 MiB) đã tốn khoảng 4,3–5,0 s (p95 `read` + `write`, lượt r1 và r3), vượt ngưỡng ảnh, chủ yếu do mã hóa PNG; ảnh khó nén vượt trần nay bị loại sau dưới 0,75 s nhờ kiểm sơ bộ (trước: tới 24,3 s); Wi-Fi 5 giữa hai máy thật (D6) và clipboard thật của Windows chưa đo (mục 9.5) |
@@ -30,7 +30,7 @@
 | mvp N10 | — | chưa đo |
 | mvp N11 | 2026-10-31: bộ cài Inno Setup thử (PR E2), cài/gỡ silent `/CURRENTUSER` 3 lần trên máy dev Windows 11 (mục 8.4); trước đó cỡ zip GUI trước/sau A2 (mục 8.2) | **CHƯA ĐỦ DỮ LIỆU**: cỡ bộ cài dưới trần theo cả hai cách hiểu “MB”, không cần khởi động lại và gỡ sạch thư mục cài, khóa gỡ cài đặt, lối tắt ở chế độ một người dùng; chế độ quản trị (rule tường lửa) và máy ảo sạch chưa đo (mục 8.3) |
 | mvp N12 | — | chưa đo |
-| mvp mục 4.1 (H1–H5) | — | chưa đo (mục 6) |
+| mvp mục 4.1 (H1–H5) | 2026-11-05: zip RC1 `7824259`, hai máy Windows thật qua Wi-Fi 2,4 GHz (mục 6.1) | **ĐẠT** cả năm tiêu chí (mục 6) |
 
 ## 3. mvp N1: Khám phá
 
@@ -143,7 +143,8 @@ Không có lần nào quá hạn hay lỗi đo (0 / 0 ở mọi ca). Ở bốn c
 
 ### 3.4. Việc còn lại
 
-- Đo N1 trên hai máy thật trong cùng mạng Wi-Fi, và trên mạng dây, để bỏ được giới hạn “chuyển gói trong máy” ở mục 3.3: **chưa đo**. Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D1).
+- N1 trên hai máy thật trong cùng mạng Wi-Fi: đã đo, ĐẠT cho xuất hiện, thoát app và mất mạng đột ngột (mục 3.6). Còn lại thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D1): máy **ngủ** thật (ca `pause` với `--hv manual`, cho máy thứ hai ngủ rồi đánh thức) **chưa đo**; mạng dây **chưa đo**; Wi-Fi 5 GHz **chưa đo**.
+- Một lần “thấy lại sau khi cắm lại mạng” quá hạn 300 s trên hai máy thật dù mạng của máy kia đã có lại (mục 3.6, Ghi nhận): **chưa tìm hiểu** nguyên nhân.
 - Kiểm kịch bản mất gói ở hai lần resolve đầu (protocol mục 8): **chưa đo**. Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D1).
 - Thêm cặp hệ điều hành khác (macOS, Windows ↔ Windows) theo mvp N10: **chưa đo**. Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D7).
 - Tìm hiểu hai ghi nhận ở mục 3.3 (thấy lại ≈ 17 s sau khi VM chạy tiếp; địa chỉ card Hyper-V được quảng bá).
@@ -167,6 +168,97 @@ python n1_host.py summarize (Get-ChildItem results\run-*\results.jsonl).FullName
 Lệnh trên host viết cho PowerShell (Python trên Windows không tự mở rộng `run-*`).
 
 `vm_subject` gồm `appear_vm` + `exit_vm`, `host_subject` gồm `appear_host` + `exit_host`, `open` là `open_host`, `link_down` và `pause` kèm ca thấy lại tương ứng. Mỗi lượt ghi vào `results/run-<giờ UTC>/` (`results.jsonl`, `summary.md`, `summary.json`); `--repeat` (mặc định 10) và `--seed` chỉnh số lần và hạt giống. Preflight phải báo đạt mới chạy tiếp.
+
+### 3.6. Lần đo 2026-11-05: hai máy Windows thật qua Wi-Fi
+
+Người dùng tự chạy theo hướng dẫn từng bước; đợt đo D1 ([ke_hoach.md](ke_hoach.md) mục 5.4), một phần. Định nghĩa các ca: mục 3.1; phương pháp như mục 3.2, khác ở chỗ “VM” là **máy thật thứ hai** (chạy `n1_vm_agent.py`) và ca `link_down` do người dùng tự tắt / bật Wi-Fi của máy đó (`--hv manual`, xem Cách chạy bên dưới). Trong bảng và trong `results.jsonl`, “host” là máy A, “VM” là máy B.
+
+Mã đo: `main` tại commit `28ab2d2`, không sửa (`src_dirty: false` ở máy A). Máy B chạy mã nguồn tải từ GitHub đúng commit đó (không có git); hai máy cùng digest mã nguồn `54c2c04ac27f2e455b864af237862ea1b5b891e894d16b9bea7db4537c363ac9`. Kết quả áp dụng cho `main` tại `7824259` (ngày đo): từ `28ab2d2` tới đó không đổi `net/discovery.py`, `core/discovery.py` hay `app/node.py`. Script: `n1_host.py`, `n1_vm_agent.py`, `n1_common.py`, `n1_firewall.ps1` (mục 3.5).
+
+| Lượt | Ca | Thời lượng | Hạt giống |
+|---|---|---|---|
+| preflight (2026-11-04 23:53 UTC) | kiểm kênh agent, mDNS hai chiều | — | — |
+| `run-20261105T000548516Z` | `appear_vm`, `exit_vm`, `appear_host`, `exit_host`, `open_host` | 322,9 s | 4025347513 |
+| `run-20261105T001957386Z` | `kill_vm`, `kill_host` | 1903,3 s | 48246278 |
+| `run-20261105T012139969Z` | `link_down`, `link_down_reappear` (10 lần) | 1431,0 s | 3989379707 |
+| `run-20261105T015352789Z` | `link_down`, `link_down_reappear` (2 lần, đo bù lần 3 của lượt trên) | 270,0 s | 3450610562 |
+
+**Lượt hỏng, không tính:** `run-20261105T005721724Z` (lượt thử: không ai tắt Wi-Fi trong 5 phút, script ghi lỗi rồi bị dừng bằng Ctrl+C); `run-20261105T010309573Z` và `run-20261105T010337291Z` (agent còn giữ node của lượt bị Ctrl+C, từ chối bật node mới: không có lần đo nào). `run-20261105T011314036Z` (lượt thử 2 lần để kiểm agent nối lại sau khi tắt Wi-Fi; một lần người dùng nhấn Enter sau khoảng 85 s) cũng không tính.
+
+**Môi trường** (ghi tự động trong `results.jsonl`, trừ dòng Wi-Fi)
+
+| | Máy A (host) | Máy B (VM) |
+|---|---|---|
+| Hệ điều hành | Windows 11 Pro, bản 10.0.26300 | Windows 10 Enterprise LTSC, bản 10.0.19044 (21H2, không phải 22H2 mà mvp N10 nêu) |
+| Python | 3.14.5 | 3.15.1 |
+| Teleport | `__version__` 0.1.0a0, commit `28ab2d2`, digest như trên | giống máy A (cùng digest) |
+| zeroconf / ifaddr / cryptography | 0.151.5 / 0.2.0 / 50.0.2 | **0.151.6** / 0.2.0 / 50.0.2 |
+| CPU / RAM | Intel Core i7-12800H, 20 luồng / 15,7 GiB | Intel Core i3-1005G1 1,20 GHz, 4 luồng / 11,7 GiB |
+| Wi-Fi | Intel Wi-Fi 6 AX201, 802.11ax, 2,4 GHz kênh 9, liên kết nhận / gửi 206 / 122 Mbps, tín hiệu 91 %, hồ sơ Private | Intel Wi-Fi 6 AX201, 802.11ax, kênh 9 (2,4 GHz), liên kết nhận / gửi 229 / 143 Mbps, tín hiệu 90 %, hồ sơ Private |
+| Địa chỉ quảng bá | `192.168.1.7` | `192.168.1.16` |
+| Đồng hồ | `QueryPerformanceCounter()`, độ phân giải 100 ns | như máy A |
+
+Hai máy cùng một mạng Wi-Fi, cùng điểm phát. Dòng Wi-Fi do người dùng ghi bằng `netsh wlan show interfaces` ngày 2026-11-03, không ghi lại ngày đo; hai máy đã khởi động lại giữa hai ngày, IP không đổi. Tường lửa: quy tắc tạm của `n1_firewall.ps1` (máy A `-Role host`, máy B `-Role vm`), chỉ cho IP của máy kia. Trong lúc đo, app Teleport (bản zip) đã thoát trên cả hai máy.
+
+**RTT kênh điều khiển** (máy A ↔ agent trên máy B, TCP): preflight 10 lần, trung vị 6,38 ms, lớn nhất 50,08 ms. Trong các lượt (lớn nhất của 3 ping trước mỗi lần đo có dùng kênh): lượt xuất hiện / thoát trung vị 8,59 ms, lớn nhất 49,00 ms; lượt giết trung vị 12,94 ms, lớn nhất 34,68 ms.
+
+**Ca `link_down` trên máy thật.** Script hiện lời nhắc trên máy A; người dùng tắt Wi-Fi máy B (ô Wi-Fi trong bảng mạng của Windows) rồi nhấn Enter trên máy A; cắm lại cũng vậy. Cận trên tính từ lúc lời nhắc hiện, cận dưới từ lúc nhấn Enter; khoảng giữa hai mốc ở các lần hợp lệ là 3,2–6,5 s. Thời điểm tắt / bật thật lấy từ log `Microsoft-Windows-WLAN-AutoConfig/Operational` của máy B (sự kiện 8003 ngắt, 8001 kết nối; đồng hồ máy B lệch máy A dưới khoảng 1 s theo các mốc ghép được):
+
+- Lần 3 của `run-20261105T012139969Z`: Wi-Fi tắt 01:25:55, **bật lại** 01:26:20–01:26:23 và 01:26:24–01:26:25 (người dùng bấm nhầm), rồi mới tắt hẳn tới 01:26:40; máy A báo mất lúc 01:26:35. Mạng không tắt liên tục nên lần này là **lỗi đo**, đã đo bù bằng `run-20261105T015352789Z`.
+- Lần 7: Wi-Fi bật lại khoảng 1 s ngay lúc tắt (01:33:08–01:33:09); chỉ làm cận trên lớn hơn chừng 1,6 s, giữ.
+- Các lần còn lại và hai lần đo bù: đúng một cặp ngắt → kết nối.
+
+**Kết quả** (giây, cận trên, trên đồng hồ của máy A; “cận dưới lớn nhất” là giá trị lớn nhất trong các cận dưới)
+
+| Ca | Hợp lệ / quá hạn / lỗi đo | Trung vị | p95 | Min | Max | Cận dưới lớn nhất | Kết luận |
+|---|---|---|---|---|---|---|---|
+| `appear_vm` | 10 / 0 / 0 | 1,126 | 1,142 | 1,077 | 1,142 | 1,121 | ĐẠT |
+| `appear_host` | 10 / 0 / 0 | 1,101 | 1,157 | 1,048 | 1,157 | 1,151 | ĐẠT |
+| `open_host` *(bổ sung)* | 10 / 0 / 0 | 0,124 | 0,182 | 0,062 | 0,182 | — | ĐẠT |
+| `exit_vm` | 10 / 0 / 0 | 0,008 | 0,013 | 0,004 | 0,013 | 0,007 | ĐẠT |
+| `exit_host` | 10 / 0 / 0 | 0,054 | 0,066 | 0,046 | 0,066 | 0,048 | ĐẠT |
+| `link_down` (gộp hai lượt) | 11 / 0 / 1 | 47,834 | 81,076 | 28,154 | 81,076 | 77,566 | ĐẠT |
+| `kill_vm` *(bổ sung)* | 10 / 0 / 0 | 52,073 | 79,131 | 24,311 | 79,131 | 79,100 | ĐẠT |
+| `kill_host` *(bổ sung)* | 10 / 0 / 0 | 42,552 | 81,470 | 25,141 | 81,470 | 81,453 | ĐẠT |
+| `link_down_reappear` (gộp, bỏ lần 3) | 10 / 1 / 0 | 17,034 | quá hạn | 17,022 | 17,051 (các lần ok) | 13,533 | chỉ ghi nhận |
+
+Ở ba ca mất mạng / bị giết, mọi giá trị đều nằm dưới cận trên đã tính ở protocol mục 8. `exit_host` (máy B quan sát) chậm hơn `exit_vm` khoảng 45 ms, phù hợp với CPU yếu hơn của máy B; vẫn rất xa ngưỡng.
+
+**Kết luận mvp N1 trên hai máy thật qua Wi-Fi 2,4 GHz: ĐẠT** cho phần xuất hiện, phần thoát app và phần mất mạng đột ngột (tắt Wi-Fi; app bị giết), 10 lần hợp lệ trở lên mỗi ca. Phần máy **ngủ** chưa đo trên máy thật (mục 3.4); với máy ảo, ca tạm dừng đã ĐẠT (mục 3.3).
+
+**Ghi nhận** (không phải yêu cầu, không có ngưỡng)
+
+- Thấy lại sau khi bật lại Wi-Fi: 10 lần nằm trong 17,022–17,051 s **tính từ lúc máy A báo mất** (lời nhắc cắm lại hiện ngay lúc đó), không phụ thuộc lúc người dùng bật Wi-Fi. Khớp với lần probe đầu tiên của thiết bị đã biến mất: `PROBE_INTERVAL` cộng thời gian resolve, sau đó probe thưa dần tới `MAX_PROBE_BACKOFF` (`core/discovery.py`). Máy A thấy lại nhờ tự hỏi, không phải nhờ máy B quảng bá lại khi có mạng.
+- **Lần 10 của `run-20261105T012139969Z` quá hạn 300 s.** Máy A báo mất lúc 01:40:21,7; theo log WLAN, Wi-Fi máy B kết nối lại lúc 01:40:28 và giữ kết nối tới hết lượt (không có ngắt nào sau đó). Theo backoff ở trên, máy A lẽ ra đã probe node cũ khoảng 17, 49, 111 và 233 s sau khi mất, nhưng không thấy lại. Ngay sau khi quá hạn, script bật một node **mới** trên máy B và máy A thấy nó sau khoảng 1,5 s, nên mạng và mDNS của máy B lúc đó bình thường. Dữ liệu này chưa đủ để biết lỗi ở phía máy B (node đã sống qua lần card Wi-Fi mất IP) hay phía máy A (probe của tên cũ). Nếu là lỗi thật, một thiết bị mất mạng lâu hơn thời gian phát hiện (ở đây ít nhất khoảng 28 s) có thể không hiện lại trên radar nhiều phút sau khi mạng có lại.
+
+**Giới hạn của lần đo này**
+
+- Chỉ Wi-Fi 2,4 GHz, một điểm phát, một cặp Windows 11 ↔ Windows 10 LTSC 21H2; không có mạng dây.
+- Mốc tắt Wi-Fi do người bấm: cận trên gồm thời gian phản ứng (3,2–6,5 s ở các lần hợp lệ). Kết luận dùng cận trên nên chỉ bảo thủ hơn.
+- Máy B chạy Python 3.15.1 và zeroconf 0.151.6 (máy A 0.151.5): đều trong khoảng `pyproject.toml` cho phép, nhưng khác bản của máy A.
+- Node đo đạc chạy từ mã nguồn bằng Python, không phải bản zip có giao diện; app không chạy song song trong lúc đo.
+- Các node không ghép đôi, như mục 3.3.
+- Kịch bản mất gói ở hai lần resolve đầu (protocol mục 8) **chưa đo**.
+
+**Cách chạy lượt này** (khác mục 3.5): máy B cài mã nguồn đúng commit vào `C:\tp-bench\teleport\.venv` và chép `n1_common.py`, `n1_vm_agent.py`, `n1_firewall.ps1` vào `C:\tp-bench\tools`. PowerShell Administrator trên máy B: `n1_firewall.ps1 -Action open -Role vm -PeerIp <IP máy A> -Program <python gốc của máy B>`; trên máy A: `-Role host -PeerIp <IP máy B> -Program <python gốc của máy A>`. Rồi:
+
+```
+# máy B
+C:\tp-bench\teleport\.venv\Scripts\python.exe n1_vm_agent.py --bind <IP máy B> --allow-host <IP máy A>
+# máy A, trong n1-bench, PYTHONPATH trỏ src của mã cần đo
+& $PY n1_host.py preflight --vm-ip <IP máy B>
+& $PY n1_host.py run --vm-ip <IP máy B> --cases vm_subject,host_subject,open
+& $PY n1_host.py run --vm-ip <IP máy B> --cases kill_vm,kill_host
+& $PY n1_host.py run --vm-ip <IP máy B> --hv manual --cases link_down
+```
+
+Dừng `n1_host.py` bằng Ctrl+C giữa lượt thì phải khởi động lại agent trên máy B trước lượt sau: agent còn giữ node bị đo và từ chối bật node mới. Lời nhắc của `--hv manual` vẫn viết cho máy ảo (“bỏ chọn 'Cable connected'”): với máy thật, tắt / bật Wi-Fi rồi nhấn Enter. Kiểm thời điểm tắt / bật thật trên máy B:
+
+```
+Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-WLAN-AutoConfig/Operational'; StartTime=<đầu lượt>; EndTime=<cuối lượt>} | Where-Object Id -in 8001,8003
+```
+
+Dọn: `n1_firewall.ps1 -Action close` trên cả hai máy.
 
 ## 4. mvp N3: Bộ nhớ
 
@@ -289,7 +381,7 @@ Lần chậm nhất của 64 MiB (18,2 MB/s, 3,70 s) là lần đo đầu tiên 
 
 - File 1 GiB, 5 GiB và 10 GiB qua CLI thật trên loopback: đã đo, ĐẠT (mục 4.6).
 - Ổ đích chậm mà RAM không tăng: **chưa đo**; USB có sẵn không dùng được (FAT32, mục 4.8). Cần một USB định dạng NTFS hoặc exFAT, còn ≥ 8 GB trống (định dạng lại USB hiện có thì xóa dữ liệu trên đó: người dùng quyết), hoặc ổ ảo giới hạn tốc độ trong máy ảo. Script đã có `--recv-dir` (mục 4.5). Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D4).
-- 10 GiB từ host sang máy thật thứ hai (Windows, Wi-Fi) qua card mạng, RAM hai phía: **chưa đo**; định nghĩa ở mục 4.1 (“Qua card mạng giữa hai máy”), script và hướng dẫn đã có (mục 4.5), cần người dùng chạy trên máy thứ hai. Thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D3).
+- 10 GiB từ host sang máy thật thứ hai (Windows, Wi-Fi) qua card mạng, RAM hai phía ([ke_hoach.md](ke_hoach.md) mục 5.4, D3): đã đo **1 lần** qua Wi-Fi 2,4 GHz (mục 4.10), ĐẠT theo quyết định của người dùng (1 lần là đủ). Còn **chưa đo**: mạng dây, và phần so 10 GiB với 1 GiB của tiêu chí 2 (cần các lần 1 GiB qua cùng mạng, lượt mvp N2 mục 5.1).
 - Phần lúc rảnh của mvp N3: lệnh CLI đã ghi nhận (mục 4.7); app có giao diện **chưa đo** (Giai đoạn 4). Đo CPU cần tránh bẫy lõi tiết kiệm điện của Windows (EcoQoS).
 - Hệ điều hành khác (Linux, macOS làm bên nhận và bên gửi), Python 3.12: **chưa đo**. Hệ điều hành khác thuộc đợt đo trên thiết bị thật ([ke_hoach.md](ke_hoach.md) mục 5.4, D7); Python 3.12 đo được trên máy này, không thuộc đợt đo.
 
@@ -561,6 +653,70 @@ $env:PYTHONPATH = "<worktree trước>\src"   # chỉ để điều phối tạo
 $env:D1_PROFILE = "1"; & $PY d1_ab.py ... --big-runs 1 --small-runs 3 --warmup --diag ; & $PY d1_diag.py results\d1-<giờ UTC>
 ```
 
+### 4.10. Lần đo 2026-11-05: 10 GiB qua Wi-Fi giữa hai máy Windows thật (D3)
+
+Phép đo “Qua card mạng giữa hai máy” ở mục 4.1, script ở mục 4.5 (`n3_net_host.py` trên máy gửi, `may2_nhan.py` trên máy nhận). Chiều máy A → máy B. Người dùng chạy theo hướng dẫn từng bước; trong lúc đo không dùng hai máy.
+
+**Mã đo.** Commit `40da800` (`main`), cây `src` `89d3f8226770d4e05f3f327f5dc8fcf47077346c`, giống `src` của zip RC1 `7824259` dùng ở mục 6.1.
+- Máy A nạp `src` lấy bằng `git archive 40da800 src` qua `PYTHONPATH` (script ghi `teleport.__file__`), với `python.exe` của `.venv` ở checkout chính.
+- Máy B dùng bản clone mới ở `40da800` (`git rev-parse HEAD:src` khớp, script ghi commit, `src_dirty` rỗng), cài `pip install -e .` vào `.venv` riêng.
+- Hai node chạy `teleport send` / `teleport receive` thật với danh tính đo riêng (`TELEPORT_HOME`), ghép đôi bằng `teleport pair` ngay trước khi đo.
+
+**Môi trường.**
+
+| | Máy A (gửi) | Máy B (nhận) |
+|---|---|---|
+| Hệ điều hành | Windows 11 Pro 10.0.26300 | Windows 10 Enterprise LTSC 2021, 21H2 (19044.7807) |
+| CPU, RAM | i7-12800H (20 luồng), 15,7 GiB | i3-1005G1 (4 luồng), 11,7 GiB |
+| Ổ đĩa | SSD NVMe 512 GB (file nguồn) | SSD NVMe 256 GB, NTFS (thư mục nhận, còn 26,8 GiB trống lúc đầu) |
+| Python, cryptography, zeroconf | 3.14.5, 50.0.2, 0.151.5 | 3.15.1, 50.0.2, 0.151.6 |
+| Wi-Fi | Intel AX201, 802.11ax, 2,4 GHz kênh 9, liên kết rx 172 / tx 88 Mbps, sóng 68 % (lúc kết thúc) | Intel AX201, liên kết 163 Mbps (lúc bắt đầu) |
+| Nguồn | cắm sạc, pin 100 %; lớp nguồn khi cắm sạc `961cc777-…` (không phải “Hiệu suất tốt nhất”) | cắm sạc, pin 100 %; lớp nguồn `ded574b5-…` (Hiệu suất tốt nhất) |
+
+Cùng một điểm phát, hồ sơ mạng Private ở cả hai máy. Máy B mở tạm cổng 47474 (chỉ cho IP máy A) và một share SMB chỉ để chuyển file “sẵn sàng” và kết quả, không dùng để truyền.
+
+**Lượt đo.** Máy A `results/net-20261105T033554Z`, máy B `may2-20261105T033538Z`. File nguồn 10 GiB (10 737 418 240 byte) ngẫu nhiên, SHA-256 `35085990262e67368c998ed2129b7223e932ac46c82174329c7794818e95073d`. Trước đó có một lần chạy thử 64 MiB (`net-20261105T033355Z`), không tính.
+
+| Đại lượng | Máy A (`send`) | Máy B (`receive`) |
+|---|---|---|
+| Kết quả, mã thoát | `done`, 0 | `done`, 0 (dừng sau 0,33 s) |
+| Working set lúc bắt đầu | 54,1 MiB | 51,9 MiB |
+| RSS tăng (cận trên) | **4,8 MiB** | **6,0 MiB** |
+| RSS tăng (lấy mẫu) | 4,8 MiB | 5,7 MiB |
+| Private bytes tăng (cận trên) | 4,2 MiB | 5,8 MiB |
+| Đỉnh rơi vào lúc truyền | có | có |
+| Max RSS Q1 / Q2 / Q3 / Q4 | 59,0 / 57,5 / 57,5 / 57,7 MiB | 57,6 / 56,4 / 56,4 / 56,7 MiB |
+| Q4 − Q1 | −1,3 MiB | −0,9 MiB |
+| Số mẫu, khoảng cách mẫu trung vị / lớn nhất | 208 615, 10,3 / 26,3 ms | 212 618, 10,2 / 39,3 ms |
+| Thời gian truyền (dòng `offer` → `result`) | 2180,7 s | 2180,7 s |
+| CPU trong lúc truyền | 59,4 s | 64,7 s |
+
+Thông lượng 4,92 MB/s (10⁶ byte, chỉ tham khảo; không phải mvp N2). SHA-256 của file nhận (băm sau khi nhận, 13,0 s) khớp file nguồn. Không có lần thử lại, không có lỗi đo.
+
+**So với tiêu chí ở mục 4.1** (viết trước khi đo):
+
+| Tiêu chí | Kết quả |
+|---|---|
+| 1. RSS tăng (cận trên) dưới ngưỡng của mvp N3 (MB = 10⁶ byte) | Đúng ở cả hai phía: 4,8 MiB và 6,0 MiB |
+| 2. Q4 − Q1 ≤ 4 MiB | Đúng ở cả hai phía: −1,3 MiB và −0,9 MiB |
+| 2. Trung vị 10 GiB − trung vị 1 GiB ≤ dao động của các lần 1 GiB | Chưa xét: chưa có lần 1 GiB qua cùng mạng |
+| 3. SHA-256 khớp, `send` / `receive` thoát mã 0 | Đúng |
+| 3. `.teleport` không còn file sau khi bên nhận thoát | **Sai theo câu chữ**: còn `transfer.json` của lượt 10 GiB và của lần chạy thử 64 MiB. Đây là hành vi thiết kế từ sau khi tiêu chí được viết: lượt đã xong giữ bản ghi tới hết thời hạn nhớ lượt đã kết thúc ([architecture.md](architecture.md) mục 4, `remove_temp(keep_record)`; [protocol.md](protocol.md) mục 6.3). Không còn `.part`, `.state` hay file tạm nào. Tiêu chí giữ nguyên, không sửa sau khi đo |
+
+**Kết luận:** **ĐẠT cho D3, theo quyết định của người dùng**. Lần 10 GiB qua Wi-Fi cho RAM tăng dưới ngưỡng mvp N3 nhiều lần và đường RAM phẳng ở cả hai phía.
+
+**Quyết định của người dùng (2026-11-05, sau khi đo):**
+- 1 lần 10 GiB là đủ cho D3. Mục 4.1 không nêu số lần cho phép đo qua card mạng; hướng dẫn ở mục 4.5 định 3 lần.
+- Tiêu chí 3 được coi là đạt khi `.teleport` không còn file tạm (`.part`, `.state`, `.tmp`); `transfer.json` của lượt đã xong được giữ theo thiết kế.
+
+Phần so 10 GiB với 1 GiB của tiêu chí 2 vẫn chưa xét, như mục 4.1 cho phép khi chưa có lượt 1 GiB qua cùng mạng. Theo quy ước mục 1, nếu không có quyết định này thì kết luận sẽ là CHƯA ĐỦ DỮ LIỆU.
+
+**Giới hạn:**
+- Chỉ Wi-Fi 2,4 GHz; mỗi byte qua sóng hai lần nên tốc độ thấp (khoảng 4,9 MB/s). Mạng dây chưa đo.
+- Máy A không ở chế độ “Hiệu suất tốt nhất”. Việc này có thể làm chậm phía gửi, nhưng không làm RAM tăng thêm.
+- Máy B chạy Windows 10 21H2, không phải phiên bản mvp N10 nêu.
+- ke_hoach mục 5.4 định đo D3 cùng lượt D2 (mvp N2); lượt N2 chưa chạy.
+
 ## 5. mvp N2: Hiệu năng so với SMB
 
 ### 5.1. Định nghĩa phép đo
@@ -637,13 +793,54 @@ Tiêu chí H1–H5, cách kiểm và điều kiện đạt (máy, mạng, bản 
 
 | Mã | Lần kiểm gần nhất | Kết luận |
 |---|---|---|
-| H1 | — | chưa đo |
-| H2 | — | chưa đo |
-| H3 | — | chưa đo |
-| H4 | — | chưa đo |
-| H5 | — | chưa đo |
+| H1 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: B hiện trên radar A sau 1,74–2,11 s (bấm tay, 3 lần); ghép đôi xong, mã 6 số trùng ở hai máy |
+| H2 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: 1 GiB qua kéo thả, hộp thoại Nhận ở B, SHA-256 trùng |
+| H3 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: tắt Wi-Fi máy B hai lần (50,7 % và 89,8 %), tự chạy tiếp, không về 0, SHA-256 trùng |
+| H4 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: thoát app B ở khoảng 41 %, mở lại sau khoảng 20 s, tự chạy tiếp không hỏi Nhận lại, SHA-256 trùng |
+| H5 | 2026-11-05, zip `7824259` (mục 6.1) | **ĐẠT**: bản mới lưu thành `demo-1GiB (1).bin`, file cũ không đổi; B sau khi A hủy ghép đôi bị từ chối, A không có hộp thoại và không có file mới |
 
 Lần đo tay N2 ở mục 5.4 không tính cho H2: không so SHA-256 của file ở hai máy.
+
+### 6.1. Lần kiểm 2026-11-05: zip RC1 `7824259`, hai máy Windows thật qua Wi-Fi
+
+Kiểm trước lịch chính thức ngày 06/11 ở [ke_hoach.md](ke_hoach.md) mục 5.5 vì có máy mượn sớm hơn. Lần kiểm này đủ điều kiện của mvp mục 4.1: zip RC1, hai máy Windows thật, cùng một mạng Wi-Fi, chỉ gõ lệnh kiểm hash. Người dùng thao tác và bấm giờ; số liệu dưới đây là số người dùng báo lại.
+
+**Bản chạy.** Cả hai máy chạy zip `teleport-gui-0.1.0a0-7824259-windows` (34 384 865 byte). Zip được build bằng workflow “Build GUI (thử)” (run 41953253539) trên `main` `7824259`; build và test frozen đều đạt. Zip `40da800` có `src/` giống hệt `7824259`, và `main` không đổi `src/` từ `7824259` tới `40da800`.
+
+**Môi trường.**
+
+| | Máy A (gửi, “Tung”) | Máy B (nhận, “DESKTOP-D3TLUTA”) |
+|---|---|---|
+| Hệ điều hành | Windows 11 Pro 10.0.26300 (Insider) | Windows 10 Enterprise LTSC 10.0.19044 (21H2) |
+| CPU, RAM | i7-12800H, 15,7 GiB | i3-1005G1, 11,7 GiB |
+| Card Wi-Fi | Intel AX201, 802.11ax | Intel AX201, 802.11ax |
+| Mạng | 2,4 GHz kênh 9, cùng điểm phát, hồ sơ Private | như máy A |
+| IP | 192.168.1.7 | 192.168.1.16 |
+| Ngôn ngữ giao diện | Tiếng Việt | Tiếng Anh (theo ngôn ngữ Windows của B) |
+
+File thử là `demo-1GiB.bin` trên máy A: 1 073 741 824 byte ngẫu nhiên, SHA-256 `BC26062F5AA02CF7B5B46312317ECCA6D4160ACC1CF3DE4FF0FD9A091E201FC3`. Thư mục nhận của B là `Downloads\Teleport`, của A là `Downloads`.
+
+**Kết quả từng bước.**
+
+| Mã | Thao tác và kết quả | Kết luận |
+|---|---|---|
+| H1 | Hai máy chưa ghép đôi. Bấm tay từ lúc mở `Teleport.exe` trên B tới lúc B hiện trên radar A, 3 lần: 2,11 / 1,74 / 2,02 s. Các số này là cận trên vì có cả thời gian phản xạ của người bấm, và đều dưới ngưỡng xuất hiện của mvp N1. Ghép đôi từ radar A: mã 6 số trùng ở hai máy, xác nhận ở cả hai | ĐẠT |
+| H2 | A kéo thả `demo-1GiB.bin` vào cuộc trò chuyện của B. B hiện hộp thoại và bấm Nhận. Từ lúc bấm Nhận tới lúc xong mất 4 phút 29 s (bấm tay, khoảng 3,99 MB/s; giao diện hiện khoảng 4,2 MB/s lúc 64 %). SHA-256 của `demo-1GiB.bin` ở B trùng file gốc | ĐẠT |
+| H3 | A gửi lại file, B lưu thành `demo-1GiB (1).bin`. Tắt Wi-Fi máy B ở 50,7 % và bật lại sau khoảng 13 s; tắt lần nữa ở 89,8 % và bật lại sau khoảng 20 s. Thời gian tắt do người dùng ước lượng, không bấm giờ, nhưng cả hai lần đều ≥ 10 s. Cả hai lần lượt truyền đều tự chạy tiếp, tiến độ không về 0. SHA-256 trùng file gốc | ĐẠT |
+| H4 | A gửi lại file, B lưu thành `demo-1GiB (2).bin`. Thoát app B (khay → Thoát) ở khoảng 41 %. A hiện “Đang nối lại… · 41,9 % · Đang chờ DESKTOP-D3TLUTA nối lại…” và dải “đang ngoại tuyến”. Mở lại B sau khoảng 20 s: lượt truyền tự chạy tiếp từ 45,4 %, không hỏi Nhận lại, rồi hoàn tất. SHA-256 trùng file gốc | ĐẠT |
+| H5 | Sau khi xóa các bản `(1)` và `(2)`, A gửi lại file: B lưu thành `demo-1GiB (1).bin`, và SHA-256 của `demo-1GiB.bin` cũ vẫn trùng file gốc. A hủy ghép đôi B, B giữ nguyên rồi gửi `thu-h5.txt` tới A. B hiện “Tung refused the connection from this device. That device may have unpaired.” kèm nút “Pair again” (câu tiếng Anh của dòng “Máy kia từ chối máy này”, mvp mục 8). A không hiện hộp thoại nhận; `Test-Path` của `thu-h5.txt` trong thư mục nhận của A trả `False`. B hủy ghép đôi nốt, cả hai về chưa ghép đôi | ĐẠT |
+
+**Kết luận:** H1–H5 **ĐẠT** trên zip `7824259`.
+
+**Ghi nhận** (không chặn tiêu chí nào):
+- Ở H3, khi mất Wi-Fi ngắn, thẻ trên máy A chỉ hiện “50,7 % · đang tính thời gian còn lại” rồi “89,8 % · Đang chờ DESKTOP-D3TLUTA phản hồi…”, không hiện “Đang nối lại…”. Chữ “Đang nối lại…” chỉ thấy ở H4, khi app B đã thoát.
+- Sau khi mở lại app B ở H4, hai thẻ cũ (H2, H3) trong lịch sử của B chỉ còn “Saved”, mất dòng “Saved as demo-1GiB (1).bin” và “Integrity verified” vốn hiện trước khi thoát app. Chưa tìm hiểu nguyên nhân.
+
+**Giới hạn:**
+- Thời gian ở H1, H2 và độ dài lúc tắt Wi-Fi ở H3, H4 đều bấm tay hoặc do người dùng ước lượng.
+- Chỉ đo trên Wi-Fi 2,4 GHz; mỗi tiêu chí kiểm một lần, riêng H1 bấm giờ 3 lần.
+- Máy B chạy Windows 10 21H2, không phải phiên bản mvp N10 nêu.
+- Nếu zip chốt ngày 07/11 khác commit `7824259`, phải kiểm lại các H mà thay đổi có thể ảnh hưởng ([ke_hoach.md](ke_hoach.md) mục 5.5).
 
 ## 7. mvp N4: Nối lại
 
