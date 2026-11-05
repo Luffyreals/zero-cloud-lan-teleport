@@ -219,6 +219,8 @@ teleport/                      # ← gốc repo
   docs/                        # mọi tài liệu .md: README (mục lục, thuật ngữ), y_tuong, mvp, ke_hoach,
                                #   architecture, protocol, CONTRIBUTING, SECURITY, CHANGELOG,
                                #   benchmark, hieu_du_an, (sau này) hướng dẫn người dùng
+  docs/anh/                    # ảnh minh họa của README.md: cảnh conversations, discover, chat_offer (sáng, 980x660)
+                               #   chụp bằng tests/ui/test_snapshots.py với nền Windows (cách chạy: docstring file đó)
   src/teleport/                # core/ trust/ net/ app/ ui/ + tiện ích dùng chung và cli.py
   tests/                       # core/, trust/, net/, app/, … theo tầng
   packaging/pyinstaller/       # cấu hình build PyInstaller (cách build: docs/CONTRIBUTING.md)

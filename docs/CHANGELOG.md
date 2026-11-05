@@ -5,6 +5,9 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây.
 
 ## [Unreleased]
 
+### Changed
+- README viết lại cho bản `v0.1.0-alpha`: link tới trang giới thiệu sản phẩm, ảnh chụp giao diện, mục “Bắt đầu nhanh” (tải và kiểm file từ trang Release, SmartScreen, tường lửa), cột cho biết tính năng nào đã có trong bản alpha, đoạn tóm tắt bằng tiếng Anh, câu hỏi thường gặp gọn hơn; con số và chi tiết giao thức nay chỉ trỏ tới tài liệu nguồn trong `docs/`.
+
 ## [0.1.0-alpha] - 2026-11-05
 
 ### Added
