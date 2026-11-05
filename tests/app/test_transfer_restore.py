@@ -630,7 +630,12 @@ async def test_sender_unpaired_while_receiver_was_off_is_not_restored_and_dir_un
     key = await B.transfers.send(A.id, [make_file(net.src, "f.bin", 16 * MiB)])
     tid = key.transfer_id
     await wait_until(lambda: write_spy.count(tid) >= 4, 20, "A chưa ghi khối nào")
+    tm = A.transfers
     await asyncio.wait_for(A.close(), 15)
+    # Việc đĩa đang chạy (vd. `commit` nối `MARK` vào `.state`) vẫn chạy ở đuôi đĩa sau `close()`;
+    # thư mục nhận chỉ đóng khi chúng đã xong, nên chờ nó rồi mới chụp.
+    rd = tm._receive_dir
+    await wait_until(lambda: rd is None or rd.closed, 15, "đuôi đĩa của A chưa xong")
     TrustStore.load(A.dir).remove(B.id)
     d = temp_dir(net.receive_dir, tid)
     before = resume_helpers.snapshot(d)

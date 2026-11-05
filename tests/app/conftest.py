@@ -1333,9 +1333,10 @@ async def transfer_nodes(node_factory, trust_each_other, tmp_path, monkeypatch, 
         async def do_connect() -> None:
             opener, other = (B, A) if client == "sender" else (A, B)
             opener.connect_hint(other.id, [LOCAL], other.port)
+            # 15 s: runner CI chạy -n auto có lúc mất quá 5 s mới xong bắt tay TLS hai chiều.
             await wait_until(
                 lambda: other.id in opener.connected_devices() and opener.id in other.connected_devices(),
-                5,
+                15,
                 f"{opener.label} chưa nối được kết nối điều khiển tới {other.label}",
             )
 

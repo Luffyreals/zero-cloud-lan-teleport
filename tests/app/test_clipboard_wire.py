@@ -189,12 +189,13 @@ async def test_malformed_clipboard_closes_control_with_protocol_error_then_recon
 
     # Nối lại: kết nối mới dùng được, cả cho clipboard hợp lệ lẫn lượt gửi file.
     B.connect_hint(A.id, [LOCAL], A.port)
+    # 15 s: runner macOS của CI chạy -n auto có lúc mất quá 5 s mới xong bắt tay TLS hai chiều.
     await app_helpers.wait_until(
         lambda: (
             A.control_connection(B.id) not in (None, conn_a)
             and B.control_connection(A.id) not in (None, conn_b)
         ),
-        5,
+        15,
         "chưa nối lại được kết nối điều khiển",
     )
     new_a, new_b = control_pair(net)
