@@ -1,12 +1,26 @@
 # Build thử bản GUI Teleport (Teleport.exe, windowed) cho Windows bằng PyInstaller (--onedir) rồi chạy
 # test khói trên exe; sau đó đóng bộ cài bằng Inno Setup (packaging/inno/teleport.iss) và chạy test
 # cài/gỡ trên bộ cài. Hai artifact riêng với bản CLI (build-cli.yml): zip thư mục dist và file bộ cài.
-# Chỉ chạy tay (workflow_dispatch); không gắn tag, không tạo Release, không dùng secret, không ký mã.
-# Artifact là bản tạm (giữ 14 ngày), không phải bản phát hành.
+# Chạy tay (workflow_dispatch), hoặc được release.yml gọi lại (workflow_call) để build bản phát hành
+# bằng đúng các bước này. Workflow này không gắn tag, không tạo Release, không dùng secret, không ký mã.
+# Artifact là bản tạm (giữ 14 ngày); release.yml đóng file phát hành từ hai artifact đó.
 name: Build GUI (thử)
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        # Như build-cli.yml: tag phát hành cho SOURCE.txt (TELEPORT_RELEASE_TAG). Rỗng: bản build thử.
+        type: string
+        default: ""
+    outputs:
+      zip-artifact:
+        description: Tên artifact chứa dist/ (thư mục teleport-gui)
+        value: ${{ jobs.build-windows.outputs.zip-artifact }}
+      setup-artifact:
+        description: Tên artifact chứa file bộ cài
+        value: ${{ jobs.build-windows.outputs.setup-artifact }}
 
 permissions:
   contents: read
@@ -16,6 +30,9 @@ jobs:
     name: windows-latest / Python 3.12.10
     runs-on: windows-latest
     timeout-minutes: 45
+    outputs:
+      zip-artifact: teleport-gui-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha7 }}-windows
+      setup-artifact: teleport-gui-setup-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha7 }}-windows
     env:
       # Inno Setup ghim đúng bản đã duyệt giấy phép (docs/ke_hoach.md mục 1, Giấy phép; văn bản ở
       # packaging/inno/licenses/). Tải từ GitHub Release chính thức của jrsoftware/issrc và kiểm SHA-256
@@ -46,6 +63,7 @@ jobs:
       - name: Build bằng PyInstaller
         env:
           PYTHONUTF8: "1"
+          TELEPORT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: pyinstaller --noconfirm --clean --distpath dist --workpath build packaging/pyinstaller/teleport-gui.spec
       - name: Lấy phiên bản và commit
         id: meta
@@ -86,6 +104,7 @@ jobs:
           # Một thư mục thì nó là gốc của zip: zip chứa teleport-gui\Teleport.exe, teleport-gui\_internal\...
           path: dist/
           retention-days: 14
+          overwrite: true  # "Re-run failed jobs" không vấp tên artifact đã có
           if-no-files-found: error
       - name: Cài Inno Setup (bản ghim, kiểm SHA-256)
         # Cài vào thư mục riêng trong RUNNER_TEMP và gọi ISCC bằng đường dẫn đầy đủ, để không dùng nhầm
@@ -132,4 +151,5 @@ jobs:
           name: teleport-gui-setup-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha7 }}-windows
           path: installer/
           retention-days: 14
+          overwrite: true  # "Re-run failed jobs" không vấp tên artifact đã có
           if-no-files-found: error

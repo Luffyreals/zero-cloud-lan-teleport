@@ -4,7 +4,7 @@
 > **Nguồn duy nhất cho:** các quyết định đã chốt, thiết kế kỹ thuật, lộ trình và **trạng thái giai đoạn**, danh sách phép đo của đợt đo trên thiết bị thật (mục 5.4), quy trình, kiểm thử, rủi ro kỹ thuật, việc cần chốt.
 > **Không chứa:** phạm vi, tính năng, tiêu chí chấp nhận và con số chất lượng → [mvp.md](mvp.md) (tham chiếu theo mã F1–F12, N1–N12). Ý tưởng, nguyên tắc và tầm nhìn → [y_tuong.md](y_tuong.md). Thuật ngữ, quy ước và bản đồ tài liệu → [README.md](README.md).
 > **Bản chính thức về kỹ thuật:** đặc tả giao thức [protocol.md](protocol.md) và trạng thái từng module [architecture.md](architecture.md); khi lệch nhau thì hai file đó đúng.
-> **Cập nhật:** 2026-11-03
+> **Cập nhật:** 2026-11-05
 
 ---
 
@@ -215,7 +215,7 @@ teleport/                      # ← gốc repo
   README.md  LICENSE  pyproject.toml   # gốc repo chỉ có 3 file này (ngoài các file ẩn .gitignore, .gitattributes)
   .claude/CLAUDE.md            # hướng dẫn cho Claude Code
   .claude/agents/              # đội subagent (danh sách: .claude/CLAUDE.md)
-  .github/workflows/           # ci.yml; build-cli.yml, build-gui.yml (build thử bản CLI, bản GUI và bộ cài Windows, chạy tay)
+  .github/workflows/           # ci.yml; build-cli.yml, build-gui.yml (build bản CLI, bản GUI và bộ cài Windows, chạy tay hoặc được `release.yml` gọi lại); release.yml (phát hành khi push tag, gọi lại hai workflow build)
   docs/                        # mọi tài liệu .md: README (mục lục, thuật ngữ), y_tuong, mvp, ke_hoach,
                                #   architecture, protocol, CONTRIBUTING, SECURITY, CHANGELOG,
                                #   benchmark, hieu_du_an, (sau này) hướng dẫn người dùng
@@ -223,6 +223,7 @@ teleport/                      # ← gốc repo
   tests/                       # core/, trust/, net/, app/, … theo tầng
   packaging/pyinstaller/       # cấu hình build PyInstaller (cách build: docs/CONTRIBUTING.md)
   packaging/inno/              # script bộ cài Inno Setup cho Windows, bản dịch, giấy phép Inno (cách build: docs/CONTRIBUTING.md)
+  packaging/release/           # các bước kiểm của workflow phát hành (docs/CONTRIBUTING.md, Phát hành)
   packaging/i18n/              # update.py: cập nhật bản dịch .ts/.qm của giao diện (luật: docs/CONTRIBUTING.md, Bản dịch)
   tools/                       # (tùy chọn) cpp-receiver/, java-client/
 ```
@@ -241,12 +242,12 @@ Nguyên tắc: **làm bằng dòng lệnh (CLI) trước, giao diện sau.** Ph�
 | # | Giai đoạn | Thời lượng | Hết tuần | Bản phát hành | Tính năng (mvp) | Người dùng làm được gì | Trạng thái |
 |---|---|---|---|---|---|---|---|
 | 0 | Nền tảng, repo, CI | 1 tuần | 1 | — | — | — | ✅ Đã xong |
-| 1 | Khám phá & ghép đôi | 2 tuần | 3 | — | F2, F3 (lõi + CLI), F12 một phần | Thấy máy khác và ghép đôi qua CLI | ✅ Đã xong (N1 đạt khi đo trên máy ảo bridged, [benchmark.md](benchmark.md) mục 3.3; đo lại trên hai máy thật trong đợt đo, mục 5.4) |
-| 2 | Truyền file, backpressure, an toàn khi nhận | 3 tuần | 6 | `v0.1.0-alpha` | F4, F5 (CLI), F12 | Gửi file lớn qua CLI giữa 2 máy đã ghép đôi | ⏸ Code xong, chờ đợt đo (mục 5.4) |
+| 1 | Khám phá & ghép đôi | 2 tuần | 3 | — | F2, F3 (lõi + CLI), F12 một phần | Thấy máy khác và ghép đôi qua CLI | ✅ Đã xong (N1 đạt khi đo trên máy ảo bridged, [benchmark.md](benchmark.md) mục 3.3, và trên hai máy Windows thật qua Wi-Fi, mục 3.6; phần còn lại của D1 thuộc đợt đo, mục 5.4) |
+| 2 | Truyền file, backpressure, an toàn khi nhận | 3 tuần | 6 | `v0.1.0-alpha` | F4, F5 (CLI), F12 | Gửi file lớn qua CLI giữa 2 máy đã ghép đôi | ✅ Đã xong (D3 đạt; D4 hoãn, xem mục 5.2) |
 | 3 | Merkle & tự nối lại | 3 tuần | 9 | `v0.2.0-alpha` | F6, F7 | Rớt mạng vẫn tự nối lại, chỉ gửi phần còn thiếu. **Bản CLI đầu tiên đáng cho người dùng kỹ thuật dùng thử** | ⏳ Đang làm |
 | 4 | Giao diện, khay hệ thống, đa ngôn ngữ | 2 tuần | 11 | `v0.3.0-beta` | F2–F5 (giao diện), F9, F10, F11 | Dùng hoàn toàn bằng giao diện: radar, kéo thả, ghép đôi | ⏳ Phần lớn đã xong (từng việc: mục 5.2); còn thông báo lỗi theo mvp mục 8, đo RAM khi rảnh (N3), kiểm AC giao diện, D8 và phần cho buổi demo hackathon (mục 5.5) |
 | 5 | Đồng bộ clipboard | 1 tuần | 12 | `v0.4.0-beta` | F8 | Đồng bộ clipboard | ⏳ Code xong (module: [architecture.md](architecture.md) mục 3); còn ca ảnh 8192² vượt mvp N6 ([benchmark.md](benchmark.md) mục 9.4) và đợt đo (mục 5.4); chưa thử tay trên máy thật (Wayland, macOS, trình quản lý mật khẩu) |
-| 6 | Hoàn thiện, bộ cài, phát hành | 3 tuần | 15 | `v1.0.0` | F1, toàn bộ N1–N12 | Bộ cài 3 hệ điều hành, tài liệu người dùng, đã thử với người dùng thật | ⏳ Đang làm bộ cài Windows (Inno Setup, build thử chạy tay, chưa ký mã: [CONTRIBUTING.md](CONTRIBUTING.md) “Bộ cài Windows”); phần còn lại chưa làm |
+| 6 | Hoàn thiện, bộ cài, phát hành | 3 tuần | 15 | `v1.0.0` | F1, toàn bộ N1–N12 | Bộ cài 3 hệ điều hành, tài liệu người dùng, đã thử với người dùng thật | ⏳ Bộ cài Windows (Inno Setup, chưa ký mã) build tự động khi gắn tag và đính kèm GitHub Release ([CONTRIBUTING.md](CONTRIBUTING.md) “Phát hành”); phần còn lại chưa làm |
 
 Ký hiệu trạng thái: [README.md](README.md) mục 4. Giai đoạn ⏸ còn chờ gì: dòng “Xong khi” của nó ở mục 5.2.
 
@@ -288,7 +289,7 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 - ✅ CLI: `teleport send <file...> --to <tên>` kèm tiến độ và tốc độ, `teleport receive`; mã thoát khác 0 khi lỗi; `--json`.
 - ✅ Build thử CLI bằng PyInstaller để sớm phát hiện vấn đề đóng gói / antivirus (chạy tay, cách build: [CONTRIBUTING.md](CONTRIBUTING.md)).
 - **Xong khi** (kiểm được ngay, đã đạt): truyền file cỡ lớn nhất mvp N3 nêu thành công qua `teleport send` / `receive` thật và đạt phần truyền của N3 trên loopback ([benchmark.md](benchmark.md) mục 4.6); test path traversal và tên đặc biệt (`../../x`, `C:\Windows\x`, `CON`, `NUL.txt`, `a.txt:ads`, `x.`, `x.part.state`) đều bị chặn hoặc đổi tên; không có trường hợp nào ghi đè file sẵn có.
-- **Xong khi** (đợt đo trên thiết bị thật, mục 5.4): D3, D4. → **`v0.1.0-alpha`** (thời điểm gắn tag: mục 5.4).
+- **Xong khi** (đợt đo trên thiết bị thật, mục 5.4): D3 (đạt, [benchmark.md](benchmark.md) mục 4.10). D4 được hoãn theo quyết định của người dùng ngày 05/11: không chặn tag `v0.1.0-alpha`, vẫn mở trong đợt đo và phải đạt trước `v1.0.0`. → **`v0.1.0-alpha`** (thời điểm gắn tag: mục 5.4).
 
 #### Giai đoạn 3 — Merkle & tự nối lại
 - ✅ Trạng thái bền trên đĩa: `core/resume_state.py` (nhật ký `.state`, [architecture.md](architecture.md) mục 4) và `transfer.json`, đọc/ghi ở `app/storage.py` (nối vào lượt truyền ở `app/transfers.py`); bia mộ của lượt truyền đã hủy lưu trên đĩa (`protocol.md` mục 6.3).
@@ -320,14 +321,14 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 - **Xong khi** (đợt đo trên thiết bị thật, mục 5.4): D6, và D8 phần clipboard (Wayland, macOS, trình quản lý mật khẩu; mục 3.6). → **`v0.4.0-beta`** (thời điểm gắn tag: mục 5.4).
 
 #### Giai đoạn 6 — Hoàn thiện & phát hành v1.0
-- Bộ cài: Inno Setup (Windows, tự tạo rule tường lửa cho mạng Private), `.dmg` (macOS), AppImage (Linux), build tự động bằng GitHub Actions khi gắn tag; lần chạy đầu theo F1; đạt N11.
+- Bộ cài: Inno Setup (Windows, tự tạo rule tường lửa cho mạng Private), `.dmg` (macOS), AppImage (Linux), build tự động bằng GitHub Actions khi gắn tag (phần Windows đã có: `release.yml`); lần chạy đầu theo F1; đạt N11.
 - Ký mã (code signing) cho Windows để giảm cảnh báo SmartScreen. Chi phí chứng chỉ cần cân nhắc; chưa có thì ghi rõ hướng dẫn “More info → Run anyway”.
 - Benchmark công bố ở [benchmark.md](benchmark.md): tốc độ (so với SMB và Google Drive), RAM theo thời gian, thời gian phát hiện, lượng dữ liệu gửi lại khi nối lại. (Tùy chọn) so sánh với bộ nhận C++.
 - Tài liệu người dùng: cài đặt, ghép đôi, khắc phục sự cố (tường lửa, cô lập Wi-Fi). `SECURITY.md`, chính sách quyền riêng tư.
 - Thử nghiệm với người dùng thật (mvp mục 9.1), sửa lỗi; test soak (N7).
 - Tuân thủ giấy phép khi đóng gói: dùng PyInstaller `--onedir` (không `--onefile`) để người dùng thay được thư viện LGPL (Qt/PySide6, zeroconf); bộ cài kèm `LICENSE` (GPL-3.0), văn bản giấy phép các thư viện bên thứ ba, và chỉ dẫn lấy mã nguồn đúng phiên bản.
-- Trước bản phát hành thật: thêm dòng bản quyền của các crate chỉ theo MIT liên kết tĩnh vào `_rust.pyd` của `cryptography` (ví dụ `openssl-sys`, `pem`) vào `THIRD-PARTY-NOTICES.txt`.
-- Đáp ứng LGPL-2.1 §6 cho zeroconf: phát hành kèm sdist của zeroconf, hoặc kèm lời đề nghị cung cấp mã nguồn bằng văn bản (hiện `SOURCE.txt` chỉ dẫn link PyPI/GitHub).
+- ✅ Thêm dòng bản quyền của các crate liên kết tĩnh vào `_rust.pyd` của `cryptography` mà giấy phép đòi giữ thông báo (MIT, BSD-3-Clause, Unicode-3.0; ví dụ `openssl-sys`, `pem`, `asn1`) vào `THIRD-PARTY-NOTICES.txt` (làm cho `v0.1.0-alpha`; cách làm: docstring của `packaging/pyinstaller/third_party.py`).
+- ✅ Đáp ứng LGPL-2.1 §6 cho zeroconf: mỗi GitHub Release đính kèm sdist zeroconf đúng bản ghim, `SOURCE.txt` của bản phát hành trỏ tới file đó (§6(d); cách làm: [CONTRIBUTING.md](CONTRIBUTING.md) “Phát hành”).
 - **Xong khi:** đạt toàn bộ tiêu chí phát hành ở mvp mục 12, gồm D1–D8 của đợt đo (mục 5.4). → **`v1.0.0`**.
 
 ### 5.3. Sau v1.0
@@ -341,7 +342,7 @@ Phiên bản app đánh số theo [SemVer](https://semver.org/lang/vi/); phiên 
 
 ### 5.4. Đợt đo trên thiết bị thật
 
-Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.md) mục 3.3) và hiện mượn tạm được một máy Windows 10 thật (mới có một lần đo tay, chỉ để tham khảo: [benchmark.md](benchmark.md) mục 5.4), nên mọi phép đo cần máy thật thứ hai hay thiết bị khác được **dồn vào một đợt**, làm một lượt khi có thiết bị. Việc code các giai đoạn không chờ đợt này: dòng “Xong khi” của mỗi giai đoạn ở mục 5.2 tách phần kiểm được ngay (test tự động, loopback, máy ảo) khỏi phần thuộc đợt đo, và chính các dòng đó ghi giai đoạn nào chờ mã D nào. Mục này là nơi duy nhất liệt kê các phép đo của đợt; định nghĩa phép đo, script và kết quả ở [benchmark.md](benchmark.md), ngưỡng và điều kiện đo ở [mvp.md](mvp.md) mục 9.
+Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.md) mục 3.3) và hiện mượn tạm được một máy Windows 10 thật (đã đo một phần D1 và D3 ngày 05/11: [benchmark.md](benchmark.md) mục 3.6, 4.10), nên mọi phép đo cần máy thật thứ hai hay thiết bị khác được **dồn vào một đợt**, làm một lượt khi có thiết bị. Việc code các giai đoạn không chờ đợt này: dòng “Xong khi” của mỗi giai đoạn ở mục 5.2 tách phần kiểm được ngay (test tự động, loopback, máy ảo) khỏi phần thuộc đợt đo, và chính các dòng đó ghi giai đoạn nào chờ mã D nào. Mục này là nơi duy nhất liệt kê các phép đo của đợt; định nghĩa phép đo, script và kết quả ở [benchmark.md](benchmark.md), ngưỡng và điều kiện đo ở [mvp.md](mvp.md) mục 9.
 
 | Mã | Phép đo | Thiết bị cần | Định nghĩa, cách đo |
 |---|---|---|---|
@@ -358,7 +359,7 @@ Máy chính có thêm một máy ảo Ubuntu bridged ([benchmark.md](benchmark.m
 - Một mã D chỉ xong khi [benchmark.md](benchmark.md) có kết luận ĐẠT cho nó, hoặc người dùng chấp nhận kết quả khác và mvp được sửa theo.
 - Phần nào đo sớm được trên máy ảo (ví dụ một phần D7 với Ubuntu) thì cứ đo và ghi vào benchmark kèm giới hạn; mã D đó vẫn mở tới khi đo trên thiết bị thật, trừ khi người dùng chấp nhận số đo máy ảo như ở Giai đoạn 1.
 - Kết quả không đạt thì sửa code trong giai đoạn đang làm lúc đó, rồi đo lại mã D đó.
-- Giai đoạn còn mã D mở thì chưa gắn tag. Đợt đo chạy trên `main` lúc đo; sau đợt đo chỉ gắn tag của giai đoạn mới nhất có cả hai dòng “Xong khi” đã đạt, lên đúng commit `main` đã dùng để đo. Tag của các giai đoạn ⏸ cũ hơn bị bỏ qua, và mục phiên bản của tag đó trong `CHANGELOG.md` gộp mọi thay đổi từ trước. Đợt đo phải xong trước `v1.0.0` (mvp mục 12). Sau đợt đo, giai đoạn nào không còn mã D mở thì đổi ⏸ thành ✅ ở mục 5.1.
+- Giai đoạn còn mã D mở thì chưa gắn tag và chưa đổi thành ✅ (ngoại lệ đã chốt: D4 của Giai đoạn 2 không chặn tag lẫn trạng thái ✅, mục 5.2). Đợt đo chạy trên `main` lúc đo; sau đợt đo chỉ gắn tag của giai đoạn mới nhất có cả hai dòng “Xong khi” đã đạt, lên commit `main` đã dùng để đo, hoặc lên commit phát hành sau đó nếu cây `src` của nó trùng cây đã đo (workflow phát hành chỉ chạy trên commit có `release.yml`; với `v0.1.0-alpha`: cây `src` ghi ở [benchmark.md](benchmark.md) mục 4.10). Tag của các giai đoạn ⏸ cũ hơn bị bỏ qua, và mục phiên bản của tag đó trong `CHANGELOG.md` gộp mọi thay đổi từ trước. Đợt đo phải xong trước `v1.0.0` (mvp mục 12). Sau đợt đo, giai đoạn nào không còn mã D mở thì đổi ⏸ thành ✅ ở mục 5.1.
 
 ### 5.5. Lịch tới buổi demo hackathon
 
@@ -368,6 +369,7 @@ Phạm vi và tiêu chí H1–H5: [mvp.md](mvp.md) mục 4.1. Buổi demo hết 
 - `main` chỉ nhận bản sửa lỗi: lỗi tìm được trên máy thật, lỗi chặn một tiêu chí H, hoặc sửa tài liệu cho khớp bản demo. Tính năng mới và việc hoàn thiện theo mục 5.2 (Giai đoạn 4–5) làm ở nhánh riêng, merge sau buổi demo.
 - Mỗi PR sửa dưới khoảng 300 dòng `src/`. Trước khi merge, người dùng tự viết 3 dòng trong mô tả PR: sửa gì, dữ liệu từ máy khác đi vào đâu, test nào chứng minh. Chưa có 3 dòng đó thì chưa merge.
 - Không thêm file test mới chỉ để theo một thay đổi giao diện.
+- Ngoại lệ (quyết định 05/11): PR phát hành `v0.1.0-alpha` (workflow phát hành, giấy phép đóng gói, tài liệu; không đổi `src/`) được merge và gắn tag trước buổi demo.
 
 Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 08/11, nên mọi việc cần hai máy thật dồn vào các ngày đó.
 
@@ -377,14 +379,14 @@ Máy thật thứ hai (máy mượn) chỉ có mặt các ngày 02, 06, 07 và 0
 | 02/11 | **Kiểm sớm** trên hai máy thật bằng zip thử, đúng mạng sẽ dùng ngày 08/11: mDNS (H1), sơ bộ H2–H5, đo tốc độ để chọn cỡ file | Lần chạy đầu của zip trên máy mượn chưa cài Python chạy được; có danh sách lỗi trên máy thật |
 | 03/11–04/11 | Bắt đầu đóng băng; sửa lỗi tìm được ngày 02/11; cập nhật README và mvp mục 4.1 theo đúng bản sẽ demo | Lỗi của ngày 02/11 đã sửa và merge vào `main`; README và mvp mục 4.1 khớp `main` |
 | 05/11 | Build zip ứng viên RC1 từ `main` bằng CI, `pytest -m demo` trên commit của zip, `pytest -m frozen`; kiểm tay trên exe của RC1; chạy `soat-tai-lieu`; chuẩn bị hai máy và mạng | Có zip ứng viên |
-| 06/11 | **Kiểm H1–H5 chính thức** trên RC1 | H1–H5 có kết quả trong [benchmark.md](benchmark.md) mục 6 |
+| 06/11 | **Kiểm H1–H5 chính thức** trên RC1. Đã làm sớm ngày 05/11 trên zip RC1 `7824259`, đạt cả năm ([benchmark.md](benchmark.md) mục 6.1); người dùng bỏ lần kiểm ngày 06/11 | H1–H5 có kết quả trong [benchmark.md](benchmark.md) mục 6 |
 | 07/11 | Có sửa thì build RC2 và kiểm lại các H bị ảnh hưởng; **18:00 chốt zip**; quay video dự phòng; tập lại, có một lần đi đường CLI và một lần không có mDNS (nhập IP) | Zip chốt, commit của zip ghi ở [benchmark.md](benchmark.md) mục 6 |
 | 08/11 | Chuẩn bị lại hai máy và mạng như 05/11; không build, không sửa | — |
 
 - Kiểm sớm ngày 02/11 **không tính là đạt**, kể cả khi đủ H1–H5: không ghi kết quả H vào [benchmark.md](benchmark.md) mục 6.
 - Zip đổi commit sau 06/11 (RC2 hay bản sửa khác) thì kiểm lại các H mà thay đổi đó có thể ảnh hưởng, trên đúng zip mới, trước khi chốt.
 
-Các ngày kiểm chính thức 06–07/11 đo luôn được D1, D3, D5 (mục 5.4) nếu kịp; không kịp thì để lại cho đợt đo.
+Các ngày kiểm chính thức 06–07/11 đo luôn được D1, D5 (mục 5.4) nếu kịp (D3 đã đo 05/11, [benchmark.md](benchmark.md) mục 4.10); không kịp thì để lại cho đợt đo.
 
 ---
 
@@ -394,7 +396,7 @@ Bản chính thức: [CONTRIBUTING.md](CONTRIBUTING.md). Tóm tắt:
 - **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `test:`, `chore:`), giúp viết `CHANGELOG.md` dễ dàng.
 - **CI** (`.github/workflows/ci.yml`): các bước kiểm tra và ma trận hệ điều hành × Python ở [CONTRIBUTING.md](CONTRIBUTING.md). `mypy` có từ đầu Giai đoạn 2 (cấu hình trong `pyproject.toml`).
 - **Đội subagent** trong `.claude/agents/`: vai trò và quy trình ở `.claude/CLAUDE.md`. Chỉ commit và push khi người dùng đồng ý.
-- **Phát hành:** các bước, cách đánh số và cách phát hành bản thử nghiệm ở [CONTRIBUTING.md](CONTRIBUTING.md). Build bộ cài tự động khi gắn tag và GitHub Release là việc của Giai đoạn 6; hiện chỉ có build thử chạy tay (`workflow_dispatch`): bản CLI, bản GUI (zip) và bộ cài Windows thử (Inno Setup, chưa ký mã; [CONTRIBUTING.md](CONTRIBUTING.md) “Bộ cài Windows”).
+- **Phát hành:** các bước, cách đánh số, workflow phát hành và cách chạy khô ở [CONTRIBUTING.md](CONTRIBUTING.md) (“Phát hành”). Push tag thì `release.yml` build bản CLI, bản GUI (zip) và bộ cài Windows (Inno Setup, chưa ký mã) bằng chính hai workflow build chạy tay, rồi tạo GitHub Release (bản alpha/beta là pre-release). Bộ cài macOS/Linux và ký mã vẫn là việc của Giai đoạn 6.
 - **Theo dõi công việc:** GitHub Issues + Milestones tương ứng từng bản phát hành ở mục 5.1.
 
 ---

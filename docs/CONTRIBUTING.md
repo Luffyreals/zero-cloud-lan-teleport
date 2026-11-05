@@ -84,7 +84,7 @@ Văn phong English: sentence case, thuật ngữ Windows, “…” ở nút m�
 | Bấm … | Click … |
 
 ## Build thử bản CLI (Windows)
-Bản CLI được đóng gói thử bằng PyInstaller để sớm phát hiện lỗi đóng gói và antivirus. Đây chưa phải bản phát hành: không gắn tag, không tạo GitHub Release. File build nằm trong `packaging/pyinstaller/`: `teleport-cli.spec` (cấu hình build), `third_party.py` (kiểm giấy phép, sinh file giấy phép), `requirements.txt` (công cụ build, ghim phiên bản) và `constraints.txt` (ghim bản dependency runtime được đóng vào exe).
+Bản CLI được đóng gói bằng PyInstaller. Build thử theo mục này không gắn tag, không tạo GitHub Release; bản phát hành build bằng đúng các bước này qua workflow phát hành (mục “Phát hành”). File build nằm trong `packaging/pyinstaller/`: `teleport-cli.spec` (cấu hình build), `third_party.py` (kiểm giấy phép, sinh file giấy phép), `requirements.txt` (công cụ build, ghim phiên bản) và `constraints.txt` (ghim bản dependency runtime được đóng vào exe).
 
 Chạy từ gốc repo, trên cây làm việc đã commit hết:
 
@@ -105,10 +105,10 @@ $env:TELEPORT_FROZEN_EXE = "$PWD\dist\teleport\teleport.exe"
 pytest -m frozen
 ```
 
-Build trên GitHub: workflow `build-cli` ([.github/workflows/build-cli.yml](../.github/workflows/build-cli.yml)) chỉ chạy tay (`workflow_dispatch`). Vào tab Actions → “Build CLI (thử)” → Run workflow, chọn nhánh `main` hoặc tag `vX.Y.Z` (hoặc `gh workflow run build-cli.yml --ref main`, `--ref vX.Y.Z`); nút chạy tay chỉ hiện khi file workflow đã có trên nhánh mặc định. Workflow build bằng đúng lệnh trên, chạy `pytest -m frozen` trên exe, rồi tải lên artifact `teleport-cli-<phiên bản>-<sha7>-windows`. Artifact là bản tạm, tự xóa sau thời hạn `retention-days` của workflow. File zip tải về chứa thẳng `teleport.exe`, `_internal\` và ba file giấy phép, không có thư mục bọc ngoài, nên hãy giải nén vào một thư mục riêng (ví dụ `C:\tp\teleport\`).
+Build trên GitHub: workflow `build-cli` ([.github/workflows/build-cli.yml](../.github/workflows/build-cli.yml)) chạy tay (`workflow_dispatch`), hoặc được workflow phát hành gọi lại (`workflow_call`, mục “Phát hành”). Vào tab Actions → “Build CLI (thử)” → Run workflow, chọn nhánh `main` hoặc tag `vX.Y.Z` (hoặc `gh workflow run build-cli.yml --ref main`, `--ref vX.Y.Z`); nút chạy tay chỉ hiện khi file workflow đã có trên nhánh mặc định. Workflow build bằng đúng lệnh trên, chạy `pytest -m frozen` trên exe, rồi tải lên artifact `teleport-cli-<phiên bản>-<sha7>-windows`. Artifact là bản tạm, tự xóa sau thời hạn `retention-days` của workflow. File zip tải về chứa thẳng `teleport.exe`, `_internal\` và ba file giấy phép, không có thư mục bọc ngoài, nên hãy giải nén vào một thư mục riêng (ví dụ `C:\tp\teleport\`).
 
 ## Build thử bản GUI (Windows)
-Bản GUI (`Teleport.exe`, cửa sổ, không mở cửa sổ dòng lệnh) đóng gói như bản CLI ở mục trên, cùng `third_party.py`, `requirements.txt` và `constraints.txt`, nhưng dùng spec `teleport-gui.spec` và điểm vào `launcher_gui.py` (gọi `teleport.ui.app:main`). Đây là bản zip giải nén là chạy, chưa phải bộ cài: không gắn tag, không tạo GitHub Release. Môi trường build cần extra `gui` (đã nằm trong `.[dev]`).
+Bản GUI (`Teleport.exe`, cửa sổ, không mở cửa sổ dòng lệnh) đóng gói như bản CLI ở mục trên, cùng `third_party.py`, `requirements.txt` và `constraints.txt`, nhưng dùng spec `teleport-gui.spec` và điểm vào `launcher_gui.py` (gọi `teleport.ui.app:main`). Đây là bản zip giải nén là chạy, chưa phải bộ cài; build thử không gắn tag, không tạo GitHub Release. Môi trường build cần extra `gui` (đã nằm trong `.[dev]`).
 
 ```powershell
 pip install -e ".[dev]" -r packaging/pyinstaller/requirements.txt -c packaging/pyinstaller/constraints.txt
@@ -127,10 +127,10 @@ $env:TELEPORT_FROZEN_GUI_EXE = "$PWD\dist\teleport-gui\Teleport.exe"
 pytest -m frozen
 ```
 
-Build trên GitHub: workflow `build-gui` ([.github/workflows/build-gui.yml](../.github/workflows/build-gui.yml)), chạy tay như `build-cli` (“Build GUI (thử)”, hoặc `gh workflow run build-gui.yml --ref main`). Artifact `teleport-gui-<phiên bản>-<sha7>-windows` riêng với zip CLI và, khác zip CLI, có thư mục bọc: giải nén ra `teleport-gui\` chứa `Teleport.exe`, `_internal\`, ba file giấy phép và `DOC-TRUOC.txt`. Chạy thử bản zip (tường lửa, SmartScreen, chỗ giải nén): làm theo `DOC-TRUOC.txt`.
+Build trên GitHub: workflow `build-gui` ([.github/workflows/build-gui.yml](../.github/workflows/build-gui.yml)), chạy tay hoặc được workflow phát hành gọi lại như `build-cli` (“Build GUI (thử)”, hoặc `gh workflow run build-gui.yml --ref main`). Artifact `teleport-gui-<phiên bản>-<sha7>-windows` riêng với zip CLI và, khác zip CLI, có thư mục bọc: giải nén ra `teleport-gui\` chứa `Teleport.exe`, `_internal\`, ba file giấy phép và `DOC-TRUOC.txt`. Chạy thử bản zip (tường lửa, SmartScreen, chỗ giải nén): làm theo `DOC-TRUOC.txt`.
 
 ## Bộ cài Windows (Inno Setup)
-Bộ cài đóng thư mục `dist/teleport-gui/` của mục trên bằng Inno Setup, theo script `packaging/inno/teleport.iss` (bản dịch tiếng Việt của Inno trong `packaging/inno/languages/`, giấy phép Inno trong `packaging/inno/licenses/`). Đây vẫn là bản build thử: chưa ký mã, không gắn tag, không tạo GitHub Release. Bộ cài cài gì, tạo rule tường lửa nào, gỡ thì giữ/xóa gì: [architecture.md](architecture.md) mục 4 (“Bộ cài Windows”); giấy phép của Inno: [ke_hoach.md](ke_hoach.md) mục 1 (Giấy phép).
+Bộ cài đóng thư mục `dist/teleport-gui/` của mục trên bằng Inno Setup, theo script `packaging/inno/teleport.iss` (bản dịch tiếng Việt của Inno trong `packaging/inno/languages/`, giấy phép Inno trong `packaging/inno/licenses/`). Bộ cài chưa ký mã. Build thử không gắn tag, không tạo GitHub Release; bộ cài phát hành do workflow phát hành build bằng cùng các bước (mục “Phát hành”). Bộ cài cài gì, tạo rule tường lửa nào, gỡ thì giữ/xóa gì: [architecture.md](architecture.md) mục 4 (“Bộ cài Windows”); giấy phép của Inno: [ke_hoach.md](ke_hoach.md) mục 1 (Giấy phép).
 
 Dùng đúng bản Inno Setup mà workflow ghim (`INNO_VERSION`, `INNO_URL`, `INNO_SHA256` trong [.github/workflows/build-gui.yml](../.github/workflows/build-gui.yml)): tải bộ cài từ GitHub Release chính thức của `jrsoftware/issrc` ở `INNO_URL`, so SHA-256 với `INNO_SHA256` rồi mới cài. Bản khác thì giấy phép và `Vietnamese.isl` chưa được rà. Build từ gốc repo, sau khi đã build `dist/teleport-gui/`; ba tham số `/D` là bắt buộc, phiên bản lấy từ `teleport.__version__` (`AppVersionNumeric`: phần release của phiên bản, đệm 0 đủ 4 số, ví dụ `0.1.0a0` → `0.1.0.0`):
 
@@ -159,19 +159,28 @@ Workflow `build-gui` làm tiếp các bước này sau test khói của exe: cà
 Khắc phục sự cố: hai rule tường lửa của bản cài cho cả máy chỉ cho máy cùng subnet vào (`remoteip=localsubnet`); máy ở subnet khác hay đi qua VPN thì Windows chặn, kể cả khi gõ IP thủ công.
 
 ## Phát hành
-1. Chuyển mục `[Unreleased]` trong `CHANGELOG.md` thành `[X.Y.Z] - YYYY-MM-DD`, đúng số của tag (bản thử nghiệm: `[0.1.0-alpha] - YYYY-MM-DD`).
+1. Chuyển mục `[Unreleased]` trong `CHANGELOG.md` thành `[X.Y.Z] - YYYY-MM-DD`, đúng số của tag (bản thử nghiệm: `[0.1.0-alpha] - YYYY-MM-DD`). Workflow phát hành lấy nội dung Release từ đúng mục này.
 2. Cập nhật `__version__` trong `src/teleport/__init__.py`. Đây là nguồn duy nhất của số phiên bản; `pyproject.toml` tự đọc từ đó.
 3. Sửa các câu nói về hiện trạng nếu bản này làm chúng đổi: khung NOTE và bảng Lộ trình của `README.md`, mục “Phiên bản được hỗ trợ” của [SECURITY.md](SECURITY.md).
-4. Gắn tag `vX.Y.Z` lên `main` rồi push tag.
+4. Sau khi merge vào `main`, chạy khô workflow phát hành trên `main` (bên dưới) và xem file trong artifact.
+5. Gắn tag `vX.Y.Z` lên commit đó của `main` rồi push tag. Workflow phát hành tự build và tạo GitHub Release.
 
 Đánh số theo [SemVer](https://semver.org/lang/vi/). Phiên bản giao thức mạng đánh số riêng, độc lập với phiên bản app.
 
 Bản thử nghiệm (alpha, beta) ghi số ở hai dạng, và đây là nơi duy nhất ghi luật này:
 - Tag và tiêu đề trong `CHANGELOG.md` theo SemVer: `v0.1.0-alpha`, `[0.1.0-alpha]`.
-- `__version__` theo PEP 440, dạng mà công cụ đóng gói Python tự chuẩn hóa về: `0.1.0a0` (beta: `0.3.0b0`). `teleport --version` và tên artifact build thử hiện dạng này.
+- `__version__` theo PEP 440, dạng mà công cụ đóng gói Python tự chuẩn hóa về: `0.1.0a0` (beta: `0.3.0b0`). `teleport --version`, tên artifact build thử và tên file phát hành hiện dạng này.
+- Bản thường thì hai dạng bằng nhau (`v1.0.0` ↔ `1.0.0`). Dạng khác (rc, `a1`, `.dev`, `.post`) không phát hành được: workflow dừng.
 - `__version__` có thể đã mang số của bản sắp gắn tag; bản build thử từ `main` khi chưa có tag cũng hiện số đó, phân biệt bằng `<sha7>`.
 
-Bản thử nghiệm trước `v1.0.0` chỉ gắn tag, không tạo GitHub Release. Bản build thử là artifact của workflow `build-cli` hay `build-gui` chạy tay trên tag hay `main` (mục “Build thử bản CLI”, “Build thử bản GUI”), và tự xóa sau thời hạn của workflow. Bộ cài build tự động khi gắn tag và GitHub Release có từ Giai đoạn 6 ([ke_hoach.md](ke_hoach.md) mục 5.2).
+Bản thử nghiệm (alpha, beta) được phát hành thành GitHub Release đánh dấu pre-release; từ `v1.0.0` là Release thường. Hiện chỉ có bản Windows; bộ cài macOS, Linux và ký mã là việc của Giai đoạn 6 ([ke_hoach.md](ke_hoach.md) mục 5.2).
+
+Workflow phát hành `release` ([.github/workflows/release.yml](../.github/workflows/release.yml), “Phát hành” trong tab Actions) chạy khi push tag `v*`. Các bước kiểm và chuẩn bị nằm trong `packaging/release/release.py` (cách gọi: docstring của file):
+- `prepare`: dừng nếu tag không khớp `__version__` theo luật trên, nếu commit của tag không nằm trên `main`, hay nếu `CHANGELOG.md` không có mục của bản đó. Nội dung Release là mục đó cộng vài dòng cố định (bản chưa ký mã: SmartScreen “More info” → “Run anyway”; đọc `DOC-TRUOC.txt`; kiểm SHA-256). Tải sdist của thư viện LGPL (zeroconf) đúng bản ghim từ PyPI và kiểm SHA-256 (`LGPL_SDISTS` trong `packaging/pyinstaller/third_party.py`, phải bằng bản ghim trong `constraints.txt`).
+- `cli`, `gui`: gọi lại `build-cli.yml` và `build-gui.yml`, nên bản phát hành qua đúng các bước và phép kiểm của build thử (bản Python ghim, Inno Setup ghim kèm SHA-256, `pytest -m frozen`, test cài/gỡ, chặn cỡ bộ cài theo mvp N11). Workflow đặt `TELEPORT_RELEASE_TAG` khi build để `SOURCE.txt` chỉ tới sdist zeroconf trên trang Release của tag (LGPL-2.1 §6: mã nguồn chép được từ cùng nơi phát bản nhị phân).
+- `publish`, job duy nhất có quyền ghi (`contents: write`, chỉ dùng `GITHUB_TOKEN`): đóng `teleport-cli-<phiên bản>-windows-x64.zip` (thư mục bọc `teleport\`), `teleport-gui-<phiên bản>-windows-x64.zip` (thư mục bọc `teleport-gui\`), lấy `teleport-setup-<phiên bản>-x64.exe` và `zeroconf-<bản>.tar.gz`, ghi `SHA256SUMS.txt` cho các file đó, rồi tạo GitHub Release cho tag. Tên file không có `<sha7>` vì Release cố định theo tag. Release của tag đã có thì job dừng, không ghi đè.
+
+Chạy khô: Actions → “Phát hành” → Run workflow trên `main` (ô `dry_run` bật sẵn), hoặc `gh workflow run release.yml --ref main`; nút chạy tay chỉ hiện khi file workflow đã có trên nhánh mặc định. Chạy khô build như bản phát hành (kể cả `SOURCE.txt` trỏ tới tag sắp gắn) và tải các file lên artifact `release-files-<phiên bản>`, nhưng không tạo Release; `CHANGELOG.md` chưa có mục của bản đó thì nội dung chỉ có một dòng ghi chú. Tắt `dry_run` chỉ được khi chạy trên một tag, dùng khi lần chạy theo push tag hỏng vì lỗi tạm thời.
 
 ## Thay đổi giao thức
 Mọi thay đổi định dạng trên dây phải cập nhật [protocol.md](protocol.md) trong cùng Pull Request. Thay đổi không tương thích thì tăng số phiên bản giao thức ([protocol.md](protocol.md) mục 9).
